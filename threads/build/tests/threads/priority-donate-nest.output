@@ -4,7 +4,7 @@ Kernel command line: -q run priority-donate-nest
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  157,081,600 loops/s.
+Calibrating timer...  78,540,800 loops/s.
 Boot complete.
 Executing 'priority-donate-nest':
 (priority-donate-nest) begin
@@ -16,14 +16,8 @@ Executing 'priority-donate-nest':
 (priority-donate-nest) Low thread should have priority 31.  Actual priority: 31.
 (priority-donate-nest) end
 Execution of 'priority-donate-nest' complete.
-Timer: 28 ticks
-Thread: 0 idle ticks, 29 kernel ticks, 0 user ticks
-Console: 899 characters output
-Kernel PANIC at ../../threads/synch.c:223 in lock_release(): assertion `lock_held_by_current_thread (lock)' failed.
-Call stack: 0x800421309c 0x8004209d3b 0x80042180e1 0x8004207187.
-The `backtrace' program can make call stacks useful.
-Read "Backtraces" in the "Debugging Tools" chapter
-of the Pintos documentation for more information.
-Timer: 30 ticks
-Thread: 0 idle ticks, 30 kernel ticks, 0 user ticks
-Console: 1
+Timer: 23 ticks
+Thread: 0 idle ticks, 23 kernel ticks, 0 user ticks
+Console: 898 characters output
+Keyboard: 0 keys pressed
+Powering off...

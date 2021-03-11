@@ -1,8 +1,32 @@
 FAIL
-Kernel panic in run: PANIC at ../../threads/synch.c:223 in lock_release(): assertion `lock_held_by_current_thread (lock)' failed.
-Call stack: 0x800421309c 0x8004209d3b 0x80042180e1 0x8004207187
-Translation of call stack:
-0x000000800421309c: debug_panic (lib/kernel/debug.c:32)
-0x0000008004209d3b: lock_release (threads/synch.c:225)
-0x00000080042180e1: medium_thread_func (tests/threads/priority-donate-nest.c:79)
-0x0000008004207187: kernel_thread (threads/thread.c:394)
+Test output failed to match any acceptable form.
+
+Acceptable output:
+  (priority-donate-nest) begin
+  (priority-donate-nest) Low thread should have priority 32.  Actual priority: 32.
+  (priority-donate-nest) Low thread should have priority 33.  Actual priority: 33.
+  (priority-donate-nest) Medium thread should have priority 33.  Actual priority: 33.
+  (priority-donate-nest) Medium thread got the lock.
+  (priority-donate-nest) High thread got the lock.
+  (priority-donate-nest) High thread finished.
+  (priority-donate-nest) High thread should have just finished.
+  (priority-donate-nest) Middle thread finished.
+  (priority-donate-nest) Medium thread should just have finished.
+  (priority-donate-nest) Low thread should have priority 31.  Actual priority: 31.
+  (priority-donate-nest) end
+Differences in `diff -u' format:
+  (priority-donate-nest) begin
+- (priority-donate-nest) Low thread should have priority 32.  Actual priority: 32.
+- (priority-donate-nest) Low thread should have priority 33.  Actual priority: 33.
+- (priority-donate-nest) Medium thread should have priority 33.  Actual priority: 33.
++ (priority-donate-nest) Low thread should have priority 32.  Actual priority: 31.
++ (priority-donate-nest) Low thread should have priority 33.  Actual priority: 31.
++ (priority-donate-nest) Medium thread should have priority 33.  Actual priority: 32.
+  (priority-donate-nest) Medium thread got the lock.
+- (priority-donate-nest) High thread got the lock.
+- (priority-donate-nest) High thread finished.
+- (priority-donate-nest) High thread should have just finished.
+- (priority-donate-nest) Middle thread finished.
+  (priority-donate-nest) Medium thread should just have finished.
+  (priority-donate-nest) Low thread should have priority 31.  Actual priority: 31.
+  (priority-donate-nest) end
