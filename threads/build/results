@@ -1,6 +1,6 @@
 pass tests/threads/alarm-single
 pass tests/threads/alarm-multiple
-pass tests/threads/alarm-simultaneous
+FAIL tests/threads/alarm-simultaneous
 FAIL tests/threads/alarm-priority
 pass tests/threads/alarm-zero
 pass tests/threads/alarm-negative

@@ -4,7 +4,7 @@ Kernel command line: -q run priority-donate-chain
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  130,867,200 loops/s.
+Calibrating timer...  71,987,200 loops/s.
 Boot complete.
 Executing 'priority-donate-chain':
 (priority-donate-chain) begin
@@ -19,8 +19,15 @@ Executing 'priority-donate-chain':
 (priority-donate-chain) main finishing with priority 0.
 (priority-donate-chain) end
 Execution of 'priority-donate-chain' complete.
-Timer: 25 ticks
-Thread: 0 idle ticks, 25 kernel ticks, 0 user ticks
-Console: 1079 characters output
+Timer: 26 ticks
+Thread: 0 idle ticks, 27 kernel ticks, 0 user ticks
+Console: 1078 characters output
 Keyboard: 0 keys pressed
-Powering off...
+PoKernel PANIC at ../../threads/thread.c:289 in thread_current(): assertion `t->status == THREAD_RUNNING' failed.
+Call stack: 0x8004213259 0x8004206f8d 0x8004206ec9 0x80042195da 0x8004207256.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 28 ticks
+Thread: 0 idle ticks, 28 kernel ticks, 0 user ticks
+Console: 1

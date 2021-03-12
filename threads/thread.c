@@ -13,6 +13,7 @@
 #include "intrinsic.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "devices/timer.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -27,6 +28,9 @@
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
+
+/* Our implementation */
+static struct list sleep_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -108,6 +112,8 @@ thread_init (void) {
 	/* Init the globla thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
+	/* Our Implementation */
+	list_init (&sleep_list);
 	list_init (&destruction_req);
 
 	/* Set up a thread structure for the running thread. */
@@ -149,9 +155,25 @@ thread_tick (void) {
 	else
 		kernel_ticks++;
 
+	/* Our implementation */
+	struct list_elem *p = list_begin(&sleep_list);
+	struct list_elem *nextp;
+	struct thread *sleep_thread;
+	while(p!=list_end(&sleep_list))
+	{
+		sleep_thread = list_entry(p, struct thread, elem);
+		nextp = list_next(p);
+		if(timer_ticks() > sleep_thread->wake_tick)
+		{
+			list_remove(&sleep_thread->elem);
+			thread_unblock(sleep_thread);
+		}
+		p = nextp;
+	}
+
 	/* Enforce preemption. */
-	if (++thread_ticks >= TIME_SLICE)
-		intr_yield_on_return ();
+if (++thread_ticks >= TIME_SLICE)
+	intr_yield_on_return ();
 }
 
 /* Prints thread statistics. */
@@ -302,6 +324,7 @@ thread_yield (void) {
 	ASSERT (!intr_context ());
 
 	old_level = intr_disable ();
+	/* Original Implemetation */
 	if (curr != idle_thread)
 		list_push_back (&ready_list, &curr->elem);
 	do_schedule (THREAD_READY);
@@ -409,6 +432,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+	/* Our implementation */
+	t->wake_tick = 0;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -587,4 +612,27 @@ allocate_tid (void) {
 	lock_release (&tid_lock);
 
 	return tid;
+}
+
+/* Our Implementation */
+/* Returns true if current thread is idle thread. */
+/* Otherwise, return false. */
+static bool is_idle(struct thread* t) {
+	if (t == idle_thread)
+		return true;
+	return false;
+}
+
+/* Our Implementation */
+void thread_sleep(int64_t time){
+	enum intr_level old_level;
+	old_level = intr_disable();
+	struct thread *curr = thread_current ();
+	if(!is_idle(curr))
+	{
+		curr -> wake_tick = time;
+		list_push_back(&sleep_list, &curr->elem);
+		thread_block();
+	}
+	intr_set_level(old_level);
 }
