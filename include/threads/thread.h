@@ -146,5 +146,7 @@ int thread_get_load_avg (void);
 void do_iret (struct intr_frame *tf);
 /* Our Implemetation */
 void thread_sleep (int64_t);
+bool less_thread_priority (const struct list_elem *a,
+	const struct list_elem *b, void *aux);
 
 #endif /* threads/thread.h */
