@@ -163,7 +163,7 @@ thread_tick (void) {
 	{
 		sleep_thread = list_entry(p, struct thread, elem);
 		nextp = list_next(p);
-		if(timer_ticks() > sleep_thread->wake_tick)
+		if(timer_ticks() >= sleep_thread->wake_tick)
 		{
 			list_remove(&sleep_thread->elem);
 			thread_unblock(sleep_thread);
@@ -229,7 +229,15 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
+	/* Our Implementation */
+	struct thread *curr = thread_current();
+	/* If newly created thread has higher priority than current,
+	   reschedule. */
+	if(curr->priority < t->priority){
+		thread_yield();
+	}
 	return tid;
+	/* END */
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -262,7 +270,13 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	/* Original Implementation
+	 * list_push_back (&ready_list, &t->elem);
+	 */
+
+	/* Our Implementation */
+  list_insert_ordered(&ready_list, &t->elem, less_thread_priority, NULL);
+	/* END */
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -324,9 +338,14 @@ thread_yield (void) {
 	ASSERT (!intr_context ());
 
 	old_level = intr_disable ();
-	/* Original Implemetation */
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+	{
+		/* Original Implemetation */
+		/* list_push_back (&ready_list, &curr->elem); */
+		/* Our Implemetation*/
+		list_insert_ordered(&ready_list, &curr->elem, less_thread_priority, NULL);
+		/* END */
+	}
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
@@ -335,6 +354,13 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	/* Our Implementation */
+	struct list_elem *p = list_begin(&ready_list);
+	struct thread *target = list_entry(p, struct thread, elem);
+	if (target->priority > new_priority )
+		thread_yield();
+	/* END */
+
 }
 
 /* Returns the current thread's priority. */
@@ -635,4 +661,12 @@ void thread_sleep(int64_t time){
 		thread_block();
 	}
 	intr_set_level(old_level);
+}
+
+/* Our Implementation */
+bool less_thread_priority(const struct list_elem *a,
+	const struct list_elem *b, void *aux) {
+		const struct thread *a_thread = list_entry(a, struct thread, elem);
+		const struct thread *b_thread = list_entry(b, struct thread, elem);
+		return a_thread->priority > b_thread->priority;
 }

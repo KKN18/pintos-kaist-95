@@ -240,6 +240,8 @@ lock_held_by_current_thread (const struct lock *lock) {
 struct semaphore_elem {
 	struct list_elem elem;              /* List element. */
 	struct semaphore semaphore;         /* This semaphore. */
+	/* Our Implementation */
+	int priority_sem;
 };
 
 /* Initializes condition variable COND.  A condition variable
@@ -321,3 +323,12 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 	while (!list_empty (&cond->waiters))
 		cond_signal (cond, lock);
 }
+
+/* Our Implementation */
+/*
+static bool less_sema_priority(const struct list_elem *a,
+	const struct list_elem *b, void *aux) {
+		const struct semaphor_elem *a_sem = list_entry(a, struct semaphore, elem);
+		const struct semaphore_elem *b_sem = list_entry(b, struct semaphore, elem);
+		return a_sem->priority_sem > b_sem->priority_sem;
+}*/
