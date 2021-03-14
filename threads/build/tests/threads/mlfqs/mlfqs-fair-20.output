@@ -4,14 +4,14 @@ Kernel command line: -q -mlfqs run mlfqs-fair-20
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  157,081,600 loops/s.
+Calibrating timer...  209,510,400 loops/s.
 Boot complete.
 Executing 'mlfqs-fair-20':
 Kernel PANIC at ../../tests/threads/tests.c:60 in run_test(): no test named "mlfqs-fair-20"
-Call stack: 0x800421330e 0x80042167bc 0x8004206636 0x8004206783 0x8004206120.
+Call stack: 0x800421331a 0x80042167c8 0x8004206636 0x8004206783 0x8004206120.
 The `backtrace' program can make call stacks useful.
 Read "Backtraces" in the "Debugging Tools" chapter
 of the Pintos documentation for more information.
-Timer: 23 ticks
-Thread: 0 idle ticks, 23 kernel ticks, 0 user ticks
+Timer: 21 ticks
+Thread: 0 idle ticks, 21 kernel ticks, 0 user ticks
 Console: 
