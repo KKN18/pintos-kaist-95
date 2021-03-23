@@ -92,7 +92,12 @@ struct thread {
 	int priority;                       /* Priority. */
 
 	/* Our Implementation */
-	int64_t wake_tick;									/* Wake-up time */
+	int64_t wake_tick;
+	int init_priority;
+	struct lock *wait_on_lock;
+	struct list donations;
+	struct list_elem donation_elem;
+	/* END */
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
@@ -148,5 +153,8 @@ void do_iret (struct intr_frame *tf);
 void thread_sleep (int64_t);
 bool less_thread_priority (const struct list_elem *a,
 	const struct list_elem *b, void *aux);
-
+void thread_preempt (void);
+void donate_priority (struct thread *);
+void refresh_priority (struct thread *, int *);
+void remove_with_lock (struct thread *, struct lock *);
 #endif /* threads/thread.h */
