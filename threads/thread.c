@@ -353,12 +353,24 @@ thread_yield (void) {
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
-	thread_current ()->priority = new_priority;
 	/* Our Implementation */
-	struct list_elem *p = list_begin(&ready_list);
-	struct thread *target = list_entry(p, struct thread, elem);
-	if (target->priority > new_priority )
-		thread_yield();
+	
+
+	intr_disable();
+
+	// 스레드의 기본 우선순위를 지정합니다.
+	thread_current ()->priority =
+		thread_current ()->base_priority = new_priority;
+
+	// 우선순위 기부를 고려한 스레드의 적용 우선순위를 계산합니다.
+	refresh_priority (thread_current (), &thread_current ()->priority);
+	// 이 스레드에서 출발하는 우선순위 기부 상태를 갱신합니다.
+	donate_priority (thread_current ());
+
+	intr_enable();
+
+	// 선점할 수 있도록 합니다.
+	thread_preempt ();
 	/* END */
 
 }
@@ -460,6 +472,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->magic = THREAD_MAGIC;
 	/* Our implementation */
 	t->wake_tick = 0;
+	list_init(&t->donations);
+	t->base_priority = priority;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -669,4 +683,64 @@ bool less_thread_priority(const struct list_elem *a,
 		const struct thread *a_thread = list_entry(a, struct thread, elem);
 		const struct thread *b_thread = list_entry(b, struct thread, elem);
 		return a_thread->priority > b_thread->priority;
+}
+
+/* PRIORITY DONATION */
+void thread_preempt (void) {
+	enum intr_level old_level;
+	old_level = intr_disable ();
+
+	if (!list_empty (&ready_list) &&
+		thread_current ()->priority
+		< list_entry (list_front (&ready_list), struct thread, elem)->priority)
+	{
+		intr_set_level (old_level);
+		thread_yield ();
+	}
+	intr_set_level (old_level);
+}
+
+void donate_priority (struct thread *cur) {
+	struct thread *holder;
+
+	if (thread_mlfqs)
+	NOT_REACHED ();
+
+	for (; cur->wait_on_lock && (holder = cur->wait_on_lock->holder); cur = holder)
+	refresh_priority (holder, &holder->priority);
+}
+
+void refresh_priority (struct thread *cur, int *priority) {
+	struct list_elem *e;
+
+	if (thread_mlfqs)
+	NOT_REACHED ();
+
+	if (*priority <= cur->priority)
+	*priority = cur->priority;
+	else return;
+
+	for (e = list_begin (&cur->donations); e != list_end (&cur->donations);
+		e = list_next (e))
+	{
+		struct thread *t = list_entry (e, struct thread, donation_elem);
+		// 재귀적으로 계속 수행합니다.
+		refresh_priority (t, priority);
+	}
+}
+
+void remove_with_lock (struct thread *cur, struct lock *lock) {
+	struct list_elem *e;
+
+	if (thread_mlfqs)
+	NOT_REACHED ();
+
+	for (e = list_begin (&cur->donations); e != list_end (&cur->donations); )
+	{
+		struct thread *t = list_entry (e, struct thread, donation_elem);
+		remove_with_lock (t, lock);
+		if (t->wait_on_lock == lock)
+		e = list_remove (e);
+		else e = list_next (e);
+	}
 }

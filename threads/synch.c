@@ -197,9 +197,31 @@ lock_acquire (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
+	/* Our Implementation */
+	struct thread *t = thread_current ();
+	enum intr_level old_level = intr_disable();
+	if (thread_mlfqs == false)
+	{
+		// 대기해야 하는지 미리 검사합니다.
+		if (lock_try_acquire (lock))
+		{
+			intr_set_level(old_level);
+			return;
+		}
+
+		t->wait_on_lock = lock;
+		
+		list_push_back (&lock->holder->donations, &t->donation_elem);
+		donate_priority (t);
+	}
+	/* END */
 
 	sema_down (&lock->semaphore);
+	t->wait_on_lock = NULL;
+	/* Our Implementation */
 	lock->holder = thread_current ();
+	intr_set_level(old_level);
+	/* END */
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -231,9 +253,24 @@ void
 lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
-
+	
 	lock->holder = NULL;
+	/* Our Implementation */
+	enum intr_level old_level = intr_disable();
+
+	if (thread_mlfqs == false)
+	{
+		// 현재 스레드가 잡았던 락으로 인하여 대기하고 있던 모든 스레드를
+		// 이 스레드의 우선순위 기부 목록에서 제거합니다.
+		remove_with_lock (thread_current (), lock);
+
+		// 우선순위 기부를 받았다면 기부를 취소할 수 있도록 하는 동작입니다.
+		thread_current ()->priority = thread_current ()->base_priority;
+		refresh_priority (thread_current (), &thread_current ()->priority);
+	}
+	/* END */
 	sema_up (&lock->semaphore);
+	intr_set_level(old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false

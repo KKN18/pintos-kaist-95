@@ -93,7 +93,7 @@ struct thread {
 
 	/* Our Implementation */
 	int64_t wake_tick;
-	int init_priority;
+	int base_priority;
 	struct lock *wait_on_lock;
 	struct list donations;
 	struct list_elem donation_elem;
