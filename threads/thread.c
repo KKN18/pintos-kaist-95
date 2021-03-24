@@ -362,7 +362,7 @@ thread_set_priority (int new_priority) {
 
 	// Only change the current_priority
 	// When it has no relation to priority donation	
-	if(new_priority < old_priority && list_empty(&t->donations))
+	if(new_priority < old_priority && list_empty(&t->donation_list))
 	{
 		t->priority = new_priority;
 	}
@@ -469,7 +469,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->magic = THREAD_MAGIC;
 	/* Our implementation */
 	t->wake_tick = 0;
-	list_init(&t->donations);
+	list_init(&t->donation_list);
 	t->base_priority = priority;
 	/* END */
 }
@@ -707,16 +707,6 @@ void thread_preempt (void) {
 	intr_set_level(old_level);
 }
 
-void donate_priority (struct thread *t) {
-	struct thread *holder;
-
-	if (thread_mlfqs)
-		NOT_REACHED ();
-
-	for (; t->wait_on_lock && (holder = t->wait_on_lock->holder); t = holder)
-		refresh_priority (holder, &holder->priority);
-}
-
 void thread_donate (struct thread *holder, struct thread *t, int depth) {
 	if(depth >= 8)
 		return;
@@ -724,7 +714,7 @@ void thread_donate (struct thread *holder, struct thread *t, int depth) {
 		return;
 	// priority donation happened
 	if(holder->priority < t->priority) {
-		new_refresh_priority (holder);
+		update_donate_priority (holder);
 		// Nested donation
 		if(holder->wait_on_lock!=NULL)
 			thread_donate(holder->wait_on_lock->holder, holder, ++depth);
@@ -733,29 +723,10 @@ void thread_donate (struct thread *holder, struct thread *t, int depth) {
 	return;
 }
 
-void refresh_priority (struct thread *cur, int *priority) {
-	struct list_elem *e;
-
-	if (thread_mlfqs)
-		NOT_REACHED ();
-
-	if (*priority <= cur->priority)
-		*priority = cur->priority;
-	else return;
-
-	for (e = list_begin (&cur->donations); e != list_end (&cur->donations);
-		e = list_next (e))
-	{
-		struct thread *t = list_entry (e, struct thread, donation_elem);
-		// 재귀적으로 계속 수행합니다.
-		refresh_priority (t, priority);
-	}
-}
-
-void new_refresh_priority (struct thread *cur) {
+void update_donate_priority (struct thread *cur) {
 	int max_priority = 0;
 	struct list_elem *p;
-	for(p = list_begin(&cur->donations); p!=list_end(&cur->donations); p=list_next(p)) 
+	for(p = list_begin(&cur->donation_list); p!=list_end(&cur->donation_list); p=list_next(p)) 
 	{
 		struct thread *t = list_entry(p, struct thread, donation_elem);
 		if(t->priority > max_priority)
@@ -764,22 +735,10 @@ void new_refresh_priority (struct thread *cur) {
 	cur->priority = max_priority;
 }
 
-void remove_with_lock (struct thread *cur, struct lock *lock) {
-	struct list_elem *e;
-	for (e = list_begin (&cur->donations); e != list_end (&cur->donations); )
-	{
-		struct thread *t = list_entry (e, struct thread, donation_elem);
-		// remove_with_lock (t, lock);
-		if (t->wait_on_lock == lock)
-			e = list_remove (e);
-		else e = list_next (e);
-	}
-}
-
 void thread_remove_lock (struct lock *lock) {
 	struct thread *holder = thread_current();
 	struct list_elem *p;
-	for(p = list_begin(&holder->donations); p!=list_end(&holder->donations);)
+	for(p = list_begin(&holder->donation_list); p!=list_end(&holder->donation_list);)
 	{
 		struct thread *t = list_entry(p, struct thread, donation_elem);
 		if(t->wait_on_lock == lock)
@@ -788,10 +747,6 @@ void thread_remove_lock (struct lock *lock) {
 	}
 	
 	holder->priority = holder->base_priority;
-	if(!list_empty(&holder->donations))
-		new_refresh_priority(holder);
-}
-
-void reorder_ready_list (void) {
-	list_sort(&ready_list, less_thread_priority, NULL);
+	if(!list_empty(&holder->donation_list))
+		update_donate_priority(holder);
 }

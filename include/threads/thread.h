@@ -95,7 +95,7 @@ struct thread {
 	int64_t wake_tick;
 	int base_priority;
 	struct lock *wait_on_lock;
-	struct list donations;
+	struct list donation_list;
 	struct list_elem donation_elem;
 	/* END */
 
@@ -154,7 +154,7 @@ void thread_sleep (int64_t);
 bool less_thread_priority (const struct list_elem *a,
 	const struct list_elem *b, void *aux);
 void thread_preempt (void);
-void donate_priority (struct thread *);
-void refresh_priority (struct thread *, int *);
-void remove_with_lock (struct thread *, struct lock *);
+void thread_donate (struct thread *, struct thread *, int);
+void update_donate_priority (struct thread *);
+void thread_remove_lock (struct lock *);
 #endif /* threads/thread.h */

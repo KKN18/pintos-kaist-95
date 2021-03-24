@@ -211,7 +211,7 @@ lock_acquire (struct lock *lock) {
 
 		t->wait_on_lock = lock;
 		
-		list_push_back (&lock->holder->donations, &t->donation_elem);
+		list_push_back (&lock->holder->donation_list, &t->donation_elem);
 		thread_donate(t->wait_on_lock->holder, t, 0);
 	}
 	/* END */
