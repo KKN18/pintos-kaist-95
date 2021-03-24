@@ -5,9 +5,9 @@ pass tests/threads/alarm-priority
 pass tests/threads/alarm-zero
 pass tests/threads/alarm-negative
 pass tests/threads/priority-change
-FAIL tests/threads/priority-donate-one
-FAIL tests/threads/priority-donate-multiple
-FAIL tests/threads/priority-donate-multiple2
+pass tests/threads/priority-donate-one
+pass tests/threads/priority-donate-multiple
+pass tests/threads/priority-donate-multiple2
 pass tests/threads/priority-donate-nest
 pass tests/threads/priority-donate-sema
 pass tests/threads/priority-donate-lower

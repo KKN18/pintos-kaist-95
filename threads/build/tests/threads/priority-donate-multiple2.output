@@ -9,7 +9,7 @@ Boot complete.
 Executing 'priority-donate-multiple2':
 (priority-donate-multiple2) begin
 (priority-donate-multiple2) Main thread should have priority 34.  Actual priority: 34.
-(priority-donate-multiple2) Main thread should have priority 36.  Actual priority: 34.
+(priority-donate-multiple2) Main thread should have priority 36.  Actual priority: 36.
 (priority-donate-multiple2) Main thread should have priority 36.  Actual priority: 36.
 (priority-donate-multiple2) Thread b acquired lock b.
 (priority-donate-multiple2) Thread b finished.
@@ -20,8 +20,8 @@ Executing 'priority-donate-multiple2':
 (priority-donate-multiple2) Main thread should have priority 31.  Actual priority: 31.
 (priority-donate-multiple2) end
 Execution of 'priority-donate-multiple2' complete.
-Timer: 24 ticks
-Thread: 0 idle ticks, 24 kernel ticks, 0 user ticks
+Timer: 25 ticks
+Thread: 0 idle ticks, 25 kernel ticks, 0 user ticks
 Console: 1165 characters output
 Keyboard: 0 keys pressed
 Powering off...

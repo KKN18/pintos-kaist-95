@@ -211,19 +211,8 @@ lock_acquire (struct lock *lock) {
 
 		t->wait_on_lock = lock;
 		
-		/*
-		if(lock->holder->priority < t->priority)
-		{
-			list_push_back (&lock->holder->donations, &t->donation_elem);
-			donate_priority(t);
-			// thread_donate(t->wait_on_lock->holder, t, 0);
-		}
-		*/
 		list_push_back (&lock->holder->donations, &t->donation_elem);
 		thread_donate(t->wait_on_lock->holder, t, 0);
-		
-		// list_push_back (&lock->holder->donations, &t->donation_elem);
-		// donate_priority (t);
 	}
 	/* END */
 
@@ -269,14 +258,9 @@ lock_release (struct lock *lock) {
 	/* Our Implementation */
 	enum intr_level old_level = intr_disable();
 
-	if (thread_mlfqs == false /*&& !list_empty(&lock->holder->donations)*/)
+	if (thread_mlfqs == false)
 	{
-		// thread_remove_lock(lock);
-		
-		remove_with_lock (thread_current (), lock);
-		thread_current ()->priority = thread_current ()->base_priority;
-		refresh_priority (thread_current (), &thread_current ()->priority);
-		
+		thread_remove_lock(lock);
 	}
 	/* END */
 	sema_up (&lock->semaphore);
