@@ -202,7 +202,6 @@ lock_acquire (struct lock *lock) {
 	enum intr_level old_level = intr_disable();
 	if (thread_mlfqs == false)
 	{
-		// 대기해야 하는지 미리 검사합니다.
 		if (lock_try_acquire (lock))
 		{
 			intr_set_level(old_level);
@@ -260,11 +259,7 @@ lock_release (struct lock *lock) {
 
 	if (thread_mlfqs == false)
 	{
-		// 현재 스레드가 잡았던 락으로 인하여 대기하고 있던 모든 스레드를
-		// 이 스레드의 우선순위 기부 목록에서 제거합니다.
 		remove_with_lock (thread_current (), lock);
-
-		// 우선순위 기부를 받았다면 기부를 취소할 수 있도록 하는 동작입니다.
 		thread_current ()->priority = thread_current ()->base_priority;
 		refresh_priority (thread_current (), &thread_current ()->priority);
 	}

@@ -66,6 +66,7 @@ static void init_thread (struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
+static int thread_get_max_priority (void);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -354,25 +355,17 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	/* Our Implementation */
-	
-
 	intr_disable();
 
-	// 스레드의 기본 우선순위를 지정합니다.
-	thread_current ()->priority =
-		thread_current ()->base_priority = new_priority;
+	thread_current ()->priority = new_priority;
+	thread_current ()->base_priority = new_priority;
 
-	// 우선순위 기부를 고려한 스레드의 적용 우선순위를 계산합니다.
 	refresh_priority (thread_current (), &thread_current ()->priority);
-	// 이 스레드에서 출발하는 우선순위 기부 상태를 갱신합니다.
 	donate_priority (thread_current ());
 
 	intr_enable();
-
-	// 선점할 수 있도록 합니다.
 	thread_preempt ();
 	/* END */
-
 }
 
 /* Returns the current thread's priority. */
@@ -685,39 +678,48 @@ bool less_thread_priority(const struct list_elem *a,
 		return a_thread->priority > b_thread->priority;
 }
 
-/* PRIORITY DONATION */
-void thread_preempt (void) {
-	enum intr_level old_level;
-	old_level = intr_disable ();
-
-	if (!list_empty (&ready_list) &&
-		thread_current ()->priority
-		< list_entry (list_front (&ready_list), struct thread, elem)->priority)
-	{
-		intr_set_level (old_level);
-		thread_yield ();
-	}
-	intr_set_level (old_level);
+static int thread_get_max_priority (void) {
+   // What if ready_list is empty?
+   if (!list_empty(&ready_list))
+   {
+		struct list_elem *p = list_front(&ready_list);
+		struct thread *target = list_entry(p, struct thread, elem);
+		return target->priority;
+   }
+   return -1;
 }
 
-void donate_priority (struct thread *cur) {
+/* PRIORITY DONATION */
+void thread_preempt (void) {
+	enum intr_level old_level = intr_disable ();
+	int priority = thread_current()->priority;
+	int max_priority = thread_get_max_priority;
+	if(max_priority!=-1)
+	{
+		intr_set_level(old_level);
+		thread_yield();
+	}
+	intr_set_level(old_level);
+}
+
+void donate_priority (struct thread *t) {
 	struct thread *holder;
 
 	if (thread_mlfqs)
-	NOT_REACHED ();
+		NOT_REACHED ();
 
-	for (; cur->wait_on_lock && (holder = cur->wait_on_lock->holder); cur = holder)
-	refresh_priority (holder, &holder->priority);
+	for (; t->wait_on_lock && (holder = t->wait_on_lock->holder); t = holder)
+		refresh_priority (holder, &holder->priority);
 }
 
 void refresh_priority (struct thread *cur, int *priority) {
 	struct list_elem *e;
 
 	if (thread_mlfqs)
-	NOT_REACHED ();
+		NOT_REACHED ();
 
 	if (*priority <= cur->priority)
-	*priority = cur->priority;
+		*priority = cur->priority;
 	else return;
 
 	for (e = list_begin (&cur->donations); e != list_end (&cur->donations);
@@ -733,14 +735,14 @@ void remove_with_lock (struct thread *cur, struct lock *lock) {
 	struct list_elem *e;
 
 	if (thread_mlfqs)
-	NOT_REACHED ();
+		NOT_REACHED ();
 
 	for (e = list_begin (&cur->donations); e != list_end (&cur->donations); )
 	{
 		struct thread *t = list_entry (e, struct thread, donation_elem);
 		remove_with_lock (t, lock);
 		if (t->wait_on_lock == lock)
-		e = list_remove (e);
+			e = list_remove (e);
 		else e = list_next (e);
 	}
 }
