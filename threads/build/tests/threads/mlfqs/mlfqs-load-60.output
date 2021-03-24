@@ -8,7 +8,7 @@ Calibrating timer...  209,510,400 loops/s.
 Boot complete.
 Executing 'mlfqs-load-60':
 Kernel PANIC at ../../tests/threads/tests.c:60 in run_test(): no test named "mlfqs-load-60"
-Call stack: 0x80042138bd 0x8004216d6b 0x8004206636 0x8004206783 0x8004206120.
+Call stack: 0x8004213b0b 0x8004216fb9 0x8004206636 0x8004206783 0x8004206120.
 The `backtrace' program can make call stacks useful.
 Read "Backtraces" in the "Debugging Tools" chapter
 of the Pintos documentation for more information.

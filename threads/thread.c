@@ -712,6 +712,23 @@ void donate_priority (struct thread *t) {
 		refresh_priority (holder, &holder->priority);
 }
 
+void thread_donate (struct thread *holder, struct thread *t, int depth) {
+	if(depth >= 8)
+		return;
+	if(holder == NULL)
+		return;
+	// priority donation happened
+	if(holder->priority < t->priority) {
+		new_refresh_priority (holder);
+		// Nested donation
+		if(holder->wait_on_lock!=NULL)
+			thread_donate(holder->wait_on_lock->holder, holder, ++depth);
+	}
+	// Else, no priority donation occurs.
+	else
+		return;
+}
+
 void refresh_priority (struct thread *cur, int *priority) {
 	struct list_elem *e;
 
@@ -731,12 +748,23 @@ void refresh_priority (struct thread *cur, int *priority) {
 	}
 }
 
+void new_refresh_priority (struct thread *cur) {
+	// struct list_elem *p;
+
+	struct list_elem *e = list_max(&cur->donations, less_thread_priority, NULL);
+	int max_priority = list_entry(e, struct thread, donation_elem)->priority;
+	/*
+	for(p = list_begin(&cur->donations); p!=list_end(&cur->donations); p=list_next(p)) 
+	{
+		struct thread *t = list_entry(p, struct thread, donation_elem);
+		if(t->priority > max_priority)
+			max_priority = t->priority;
+	}*/
+	cur->priority = max_priority;
+}
+
 void remove_with_lock (struct thread *cur, struct lock *lock) {
 	struct list_elem *e;
-
-	if (thread_mlfqs)
-		NOT_REACHED ();
-
 	for (e = list_begin (&cur->donations); e != list_end (&cur->donations); )
 	{
 		struct thread *t = list_entry (e, struct thread, donation_elem);
@@ -745,4 +773,30 @@ void remove_with_lock (struct thread *cur, struct lock *lock) {
 			e = list_remove (e);
 		else e = list_next (e);
 	}
+}
+
+void thread_remove_lock (struct lock *lock) {
+	struct thread *holder = lock->holder;
+	struct list_elem *p;
+	int max_priority = 0;
+	for(p = list_begin(&holder->donations); p!=list_end(&holder->donations);)
+	{
+		struct thread *t = list_entry(p, struct thread, donation_elem);
+		if(t->wait_on_lock == lock)
+			p = list_remove(p);
+		else p = list_next(p);
+	}
+	for(p = list_begin(&holder->donations); p!=list_end(&holder->donations); p=list_next(p)) 
+	{
+		struct thread *t = list_entry(p, struct thread, donation_elem);
+		if(t->priority > max_priority)
+			max_priority = t->priority;
+	}
+	holder->priority = max_priority;
+	if(holder->status == THREAD_READY)
+		reorder_ready_list();
+}
+
+void reorder_ready_list (void) {
+	list_sort(&ready_list, less_thread_priority, NULL);
 }
