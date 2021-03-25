@@ -92,7 +92,14 @@ struct thread {
 	int priority;                       /* Priority. */
 
 	/* Our Implementation */
-	int64_t wake_tick;									/* Wake-up time */
+	int64_t wake_tick;
+	int base_priority;
+	struct lock *wait_on_lock;
+	struct list donation_list;
+	struct list_elem donation_elem;
+	int nice;
+	int recent_cpu;
+	/* END */
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
@@ -142,11 +149,26 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+/* Our Implementation */
+// Functions for mlfqs
+int load_avg;
+int ready_threads (void);
+void update_mlfqs_priority (struct thread *t);
+void update_mlfqs_recent_cpu (struct thread *t);
+void update_mlfqs_load_avg (void);
+void thread_increment_recent_cpu (void);
+void update_all_mlfqs (void);
+/* END */
 
 void do_iret (struct intr_frame *tf);
 /* Our Implemetation */
+int64_t ret_first_wake_tick(void);
+void awake_threads(int64_t);
 void thread_sleep (int64_t);
 bool less_thread_priority (const struct list_elem *a,
 	const struct list_elem *b, void *aux);
-
+void thread_preempt (void);
+void thread_donate (struct thread *, struct thread *, int);
+void update_donate_priority (struct thread *);
+void thread_remove_lock (struct lock *);
 #endif /* threads/thread.h */

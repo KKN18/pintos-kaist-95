@@ -133,6 +133,21 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
+	if(thread_mlfqs)
+	{
+		thread_increment_recent_cpu();
+		if(ticks % TIMER_FREQ == 0)
+		{
+			update_all_mlfqs();
+		}
+		else if(ticks % 4 == 0)
+		{
+			update_mlfqs_priority(thread_current());
+		}
+		
+	}
+	if(ticks >= ret_first_wake_tick())
+		awake_threads(ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
