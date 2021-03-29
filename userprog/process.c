@@ -388,6 +388,10 @@ void construct_rsp(char *file_name, void **rsp){
 	*rsp -= 8;
 	**(uint64_t **)rsp = 0;
 
+	/* Our Implementation */
+	// For debugging
+	hex_dump(*rsp, *rsp, 64, 1);
+	/* END */
 	free(argv);
 }
 
@@ -414,7 +418,8 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* Our Implementation */
 	char cmd_name[256];
-	char *dup_file_name = file_name;
+	char dup_file_name[256];
+	strlcpy(dup_file_name, file_name, strlen(file_name) + 1);
 	parse_filename(file_name, cmd_name);
 	file_name = cmd_name;
 	/* END */
@@ -638,13 +643,6 @@ setup_stack (struct intr_frame *if_) {
 	/* Our Implementation */
 	// DEBUGGING ARGUMENT PASSING
 	printf("THIS IS SETUP_STACK:\n");
-	int ofs = (uintptr_t)if_->rsp;
-	int byte_size = 0xc0000000 - ofs;
-	// hex_dump(ofs, &if_->rsp, byte_size, true);
-	// uint64_t ofs = (uint64_t)*if_->rsp;
-	hex_dump(if_->rsp, if_->rsp, byte_size, true);
-	/* END */
-
 	return success;
 }
 
