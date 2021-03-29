@@ -204,6 +204,9 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	/* Our Implementation */
+	while(1);
+	/* END */
 	return -1;
 }
 
@@ -316,6 +319,78 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes,
 		bool writable);
 
+/* Our Implementation */
+void parse_filename(char *src, char *dest) {
+	int i;
+	strlcpy(dest, src, strlen(src) + 1);
+	for(i=0; dest[i]!='\0' && dest[i] != ' '; i++);
+	dest[i] = '\0';
+}
+
+void construct_rsp(char *file_name, void **rsp){
+	char **argv;
+	int argc;
+	int total_len;
+	char stored_file_name[256];
+	char *token;
+	char *last;
+	int i;
+	int len;
+
+	strlcpy(stored_file_name, file_name, strlen(file_name) + 1);
+	token = strtok_r(stored_file_name, " ", &last);
+	argc = 0;
+	/* calculate argc */
+	while (token != NULL) {
+		argc += 1;
+		token = strtok_r(NULL, " ", &last);
+	}
+	argv = (char **)malloc(sizeof(char *) * argc);
+	/* store argv */
+	strlcpy(stored_file_name, file_name, strlen(file_name) + 1);
+	for(i = 0, token = strtok_r(stored_file_name, " ", &last); \
+	i < argc; i++, token = strtok_r(NULL, " ", &last)) {
+		len = strlen(token);
+		argv[i] = token;
+	}
+
+	/* push argv[argc - 1] ~ argv[0] */
+	total_len = 0;
+	for (i = argc - 1; i>=0; i--) {
+		len = strlen(argv[i]);
+		*rsp -= len + 1;
+		total_len += len + 1;
+		strlcpy(*rsp, argv[i], len + 1);
+		argv[i] = *rsp;
+	}
+	/* push word align */
+	*rsp -= total_len % 8 != 0 ? 8 - (total_len % 8) : 0;
+	/* push NULL */
+	*rsp -= 8;
+	**(uint64_t **)rsp = 0;
+	/* push address of argv[argc - 1] ~ argv[0] */
+	for (i = argc - 1; 0 <= i; i--) {
+		*rsp -= 8;
+		**(uint64_t **)rsp = argv[i];
+	}
+	/* push address of argv */
+	*rsp -= 8;
+	**(uint64_t **)rsp = *rsp + 8;
+
+	/* push argc */
+	*rsp -= 8;
+	**(uint64_t **)rsp = argc;
+
+	/* push return address */
+	*rsp -= 8;
+	**(uint64_t **)rsp = 0;
+
+	free(argv);
+	ASSERT(0);
+}
+
+/* END */
+
 /* Loads an ELF executable from FILE_NAME into the current thread.
  * Stores the executable's entry point into *RIP
  * and its initial stack pointer into *RSP.
@@ -334,6 +409,14 @@ load (const char *file_name, struct intr_frame *if_) {
 	if (t->pml4 == NULL)
 		goto done;
 	process_activate (thread_current ());
+
+	/* Our Implementation */
+	char cmd_name[256];
+	char *dup_file_name = file_name;
+	parse_filename(file_name, cmd_name);
+	file_name = cmd_name;
+	printf("result of parse_filename: %s\n", file_name);
+	/* END */
 
 	/* Open executable file. */
 	file = filesys_open (file_name);
@@ -416,7 +499,9 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
-
+	/* Our Implemantation */
+	construct_rsp(dup_file_name, if_->rsp);
+	/* END */
 	success = true;
 
 done:
@@ -548,6 +633,14 @@ setup_stack (struct intr_frame *if_) {
 		else
 			palloc_free_page (kpage);
 	}
+
+	/* Our Implementation */
+	// DEBUGGING ARGUMENT PASSING
+	printf("THIS IS SETUP_STACK:\n");
+	// uint64_t ofs = (uint64_t)*if_->rsp;
+
+	/* END */
+
 	return success;
 }
 
