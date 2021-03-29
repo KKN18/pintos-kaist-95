@@ -346,6 +346,7 @@ void construct_rsp(char *file_name, void **rsp){
 		token = strtok_r(NULL, " ", &last);
 	}
 	argv = (char **)malloc(sizeof(char *) * argc);
+	
 	/* store argv */
 	strlcpy(stored_file_name, file_name, strlen(file_name) + 1);
 	for(i = 0, token = strtok_r(stored_file_name, " ", &last); \
@@ -353,13 +354,15 @@ void construct_rsp(char *file_name, void **rsp){
 		len = strlen(token);
 		argv[i] = token;
 	}
-
+	
 	/* push argv[argc - 1] ~ argv[0] */
 	total_len = 0;
 	for (i = argc - 1; i>=0; i--) {
 		len = strlen(argv[i]);
+		// ERROR START
 		*rsp -= len + 1;
 		total_len += len + 1;
+		// ERROR END
 		strlcpy(*rsp, argv[i], len + 1);
 		argv[i] = *rsp;
 	}
@@ -386,7 +389,6 @@ void construct_rsp(char *file_name, void **rsp){
 	**(uint64_t **)rsp = 0;
 
 	free(argv);
-	ASSERT(0);
 }
 
 /* END */
@@ -415,7 +417,6 @@ load (const char *file_name, struct intr_frame *if_) {
 	char *dup_file_name = file_name;
 	parse_filename(file_name, cmd_name);
 	file_name = cmd_name;
-	printf("result of parse_filename: %s\n", file_name);
 	/* END */
 
 	/* Open executable file. */
@@ -500,7 +501,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
 	/* Our Implemantation */
-	construct_rsp(dup_file_name, if_->rsp);
+	construct_rsp(dup_file_name, &if_->rsp);
 	/* END */
 	success = true;
 
@@ -637,8 +638,11 @@ setup_stack (struct intr_frame *if_) {
 	/* Our Implementation */
 	// DEBUGGING ARGUMENT PASSING
 	printf("THIS IS SETUP_STACK:\n");
+	int ofs = (uintptr_t)if_->rsp;
+	int byte_size = 0xc0000000 - ofs;
+	// hex_dump(ofs, &if_->rsp, byte_size, true);
 	// uint64_t ofs = (uint64_t)*if_->rsp;
-
+	hex_dump(if_->rsp, if_->rsp, byte_size, true);
 	/* END */
 
 	return success;
