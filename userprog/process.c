@@ -214,7 +214,9 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	/* Our Implementation */
-	while(1);
+	for(int i=0; i<1000000000; i++){
+
+	}
 	/* END */
 	return -1;
 }
@@ -360,6 +362,7 @@ void pass_arguments(char *file_name, struct intr_frame *if_){
 	char **argv = (char **)malloc(sizeof(char *) * argc);
 	// Temporarily store file_name on filename_copy
 	char *filename_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
+	// char filename_copy[256];
 
 	// store argv
 	int cnt = 0;
@@ -374,7 +377,6 @@ void pass_arguments(char *file_name, struct intr_frame *if_){
 	}
 
 	/* push argv[argc - 1] ~ argv[0] */
-	total_len = 0;
 	for (int i = argc - 1; i>=0; i--) 
 	{
 		*rsp -= strlen(argv[i]) + 1;
@@ -382,13 +384,9 @@ void pass_arguments(char *file_name, struct intr_frame *if_){
 		argv[i] = *rsp;
 	}
 
-	/* Save argv, argc on registers */
-	if_->R.rsi = *rsp;
-   	if_->R.rdi = argc;
-
 	/* push word align */
 	if(total_len % WORD_SIZE != 0) {
-		*rsp -= WORD_SIZE - total_len % WORD_SIZE;
+		*rsp -= (WORD_SIZE - (total_len % WORD_SIZE));
 	}
 
 	/* push NULL */
@@ -400,6 +398,10 @@ void pass_arguments(char *file_name, struct intr_frame *if_){
 		*rsp -= WORD_SIZE;
 		**(uint64_t **)rsp = argv[i];
 	}
+
+	/* Save argv, argc on registers */
+	if_->R.rsi = *rsp;
+   	if_->R.rdi = argc;
 
 	/* push return address */
 	*rsp -= WORD_SIZE;
@@ -671,7 +673,7 @@ setup_stack (struct intr_frame *if_) {
 
 	/* Our Implementation */
 	// DEBUGGING ARGUMENT PASSING
-	printf("Inside setup_stack():\n");
+	// printf("Inside setup_stack():\n");
 	return success;
 }
 

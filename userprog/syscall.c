@@ -8,6 +8,7 @@
 #include "threads/flags.h"
 #include "intrinsic.h"
 
+
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
@@ -37,10 +38,96 @@ syscall_init (void) {
 			FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
 
+/* Our Implementation */
+void halt (void) {
+	power_off();
+}
+
+void exit(int status) {
+	printf("%s: exit(%d)\n", thread_name(), status);
+	thread_exit();
+}
+
+int wait(pid_t pid) {
+	return process_wait(pid);
+}
+
+pid_t exec (const char *cmd_line) {
+  return process_exec(cmd_line);
+}
+
+int read (int fd, void* buffer, unsigned size) {
+  int i;
+  if (fd == 0) {
+    for (i = 0; i < size; i ++) {
+      if (((char *)buffer)[i] == '\0') {
+        break;
+      }
+    }
+  }
+  return i;
+}
+
+int write(int fd, const void *buffer, unsigned size) {
+	if(fd == 1) {
+		putbuf(buffer, size);
+		return size;
+	}
+	return -1;
+}
+
+/* END */
+
+
+
 /* The main system call interface */
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
-	printf ("system call!\n");
-	thread_exit ();
+	/* Our Implementation */
+	// printf ("syscall num : %d\n", f->R.rax);
+	// printf ("system call!\n");
+
+
+	switch (f->R.rax) {
+		case SYS_HALT:
+			halt();
+			break;
+		case SYS_EXIT:
+			exit(f->R.rdi);
+			break;
+		case SYS_FORK:
+			break;
+		case SYS_EXEC:
+			exec(f->R.rdi);
+			break;
+		case SYS_WAIT:
+			wait(f->R.rdi);
+			break;
+		case SYS_CREATE:
+			break;
+		case SYS_REMOVE:
+			break;
+		case SYS_OPEN:
+			break;
+		case SYS_FILESIZE:
+			break;
+		case SYS_READ:
+			read(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		case SYS_WRITE:
+			write(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		case SYS_SEEK:
+			break;
+		case SYS_TELL:
+			break;
+		case SYS_CLOSE:
+			break;
+	}
+	/* END */
+
+	
 }
+
+
