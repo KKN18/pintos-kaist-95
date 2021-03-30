@@ -21,6 +21,7 @@
 #ifdef VM
 #include "vm/vm.h"
 #endif
+#define WORD_SIZE 8
 
 static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
@@ -50,8 +51,16 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
+	/* Our Implementation */
+	char *filename_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
+	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
+	char *argptr;
+	strtok_r(filename_copy, " ", &argptr);
+
 	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
+	tid = thread_create (filename_copy, PRI_DEFAULT, initd, fn_copy);
+	free(filename_copy);
+	/* END */
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -320,78 +329,87 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		bool writable);
 
 /* Our Implementation */
-void parse_filename(char *src, char *dest) {
-	int i;
-	strlcpy(dest, src, strlen(src) + 1);
-	for(i=0; dest[i]!='\0' && dest[i] != ' '; i++);
-	dest[i] = '\0';
-}
-
-void construct_rsp(char *file_name, void **rsp){
-	char **argv;
-	int argc;
-	int total_len;
-	char stored_file_name[256];
-	char *token;
+int args_count(char *file_name) {
 	char *last;
-	int i;
-	int len;
+	char *token;
+	char *filename_copy;
+	int argc;
 
-	strlcpy(stored_file_name, file_name, strlen(file_name) + 1);
-	token = strtok_r(stored_file_name, " ", &last);
+	filename_copy = calloc(strlen(file_name)+1, sizeof(char));
+	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
+	token = strtok_r(filename_copy, " ", &last);
+	
 	argc = 0;
-	/* calculate argc */
 	while (token != NULL) {
-		argc += 1;
+		argc++;
 		token = strtok_r(NULL, " ", &last);
 	}
-	argv = (char **)malloc(sizeof(char *) * argc);
-	
-	/* store argv */
-	strlcpy(stored_file_name, file_name, strlen(file_name) + 1);
-	for(i = 0, token = strtok_r(stored_file_name, " ", &last); \
-	i < argc; i++, token = strtok_r(NULL, " ", &last)) {
-		len = strlen(token);
-		argv[i] = token;
+	free(filename_copy);
+	return argc; 
+}
+
+void pass_arguments(char *file_name, struct intr_frame *if_){
+	// Used for strtok_r
+	char *token;
+	char *last;
+
+	void **rsp = &if_->rsp;
+
+	// Our Implementation
+	int argc = args_count(file_name);
+	char **argv = (char **)malloc(sizeof(char *) * argc);
+	// Temporarily store file_name on filename_copy
+	char *filename_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
+
+	// store argv
+	int cnt = 0;
+	int total_len = 0;
+	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
+	token = strtok_r(filename_copy, " ", &last);
+	while(token != NULL) 
+	{
+		argv[cnt++] = token;
+		total_len += strlen(token) + 1;
+		token = strtok_r(NULL, " ", &last);
 	}
-	
+
 	/* push argv[argc - 1] ~ argv[0] */
 	total_len = 0;
-	for (i = argc - 1; i>=0; i--) {
-		len = strlen(argv[i]);
-		// ERROR START
-		*rsp -= len + 1;
-		total_len += len + 1;
-		// ERROR END
-		strlcpy(*rsp, argv[i], len + 1);
+	for (int i = argc - 1; i>=0; i--) 
+	{
+		*rsp -= strlen(argv[i]) + 1;
+		strlcpy(*rsp, argv[i], strlen(argv[i]) + 1);
 		argv[i] = *rsp;
 	}
+
+	/* Save argv, argc on registers */
+	if_->R.rsi = *rsp;
+   	if_->R.rdi = argc;
+
 	/* push word align */
-	*rsp -= total_len % 8 != 0 ? 8 - (total_len % 8) : 0;
+	if(total_len % WORD_SIZE != 0) {
+		*rsp -= WORD_SIZE - total_len % WORD_SIZE;
+	}
+
 	/* push NULL */
-	*rsp -= 8;
+	*rsp -= WORD_SIZE;
 	**(uint64_t **)rsp = 0;
+
 	/* push address of argv[argc - 1] ~ argv[0] */
-	for (i = argc - 1; 0 <= i; i--) {
-		*rsp -= 8;
+	for (int i = argc - 1; i>=0; i--) {
+		*rsp -= WORD_SIZE;
 		**(uint64_t **)rsp = argv[i];
 	}
-	/* push address of argv */
-	*rsp -= 8;
-	**(uint64_t **)rsp = *rsp + 8;
-
-	/* push argc */
-	*rsp -= 8;
-	**(uint64_t **)rsp = argc;
 
 	/* push return address */
-	*rsp -= 8;
+	*rsp -= WORD_SIZE;
 	**(uint64_t **)rsp = 0;
 
 	/* Our Implementation */
 	// For debugging
-	hex_dump(*rsp, *rsp, 64, 1);
+	// hex_dump(*rsp, *rsp, 64, 1);
 	/* END */
+	free(filename_copy);
 	free(argv);
 }
 
@@ -417,19 +435,30 @@ load (const char *file_name, struct intr_frame *if_) {
 	process_activate (thread_current ());
 
 	/* Our Implementation */
-	char cmd_name[256];
-	char dup_file_name[256];
-	strlcpy(dup_file_name, file_name, strlen(file_name) + 1);
-	parse_filename(file_name, cmd_name);
-	file_name = cmd_name;
+	char *filename_copy = calloc(strlen(file_name)+1, sizeof(char));
+	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
+	char *argptr;
+	strtok_r(filename_copy, " ", &argptr);
 	/* END */
 
+	// Original Implementation
 	/* Open executable file. */
+	/*
 	file = filesys_open (file_name);
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
 	}
+	*/
+	
+	/* Our Implementation */
+	file = filesys_open (filename_copy);
+	if (file == NULL) {
+		printf ("load: %s: open failed\n", filename_copy);
+		goto done;
+	}
+	free(filename_copy);
+	/* END */
 
 	/* Read and verify executable header. */
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -506,7 +535,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
 	/* Our Implemantation */
-	construct_rsp(dup_file_name, &if_->rsp);
+	pass_arguments((char *)file_name, if_);
 	/* END */
 	success = true;
 
@@ -642,7 +671,7 @@ setup_stack (struct intr_frame *if_) {
 
 	/* Our Implementation */
 	// DEBUGGING ARGUMENT PASSING
-	printf("THIS IS SETUP_STACK:\n");
+	printf("Inside setup_stack():\n");
 	return success;
 }
 
