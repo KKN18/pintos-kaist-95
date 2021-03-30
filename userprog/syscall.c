@@ -39,6 +39,11 @@ syscall_init (void) {
 }
 
 /* Our Implementation */
+void check_user_vaddr(const void *vaddr) {
+   if (!is_user_vaddr(vaddr))
+      exit(-1);
+}
+
 void halt (void) {
 	power_off();
 }
@@ -94,11 +99,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			halt();
 			break;
 		case SYS_EXIT:
+			check_user_vaddr(f->R.rdi);
 			exit(f->R.rdi);
 			break;
 		case SYS_FORK:
 			break;
 		case SYS_EXEC:
+			check_user_vaddr(f->R.rdi);
 			exec(f->R.rdi);
 			break;
 		case SYS_WAIT:
@@ -113,9 +120,15 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_FILESIZE:
 			break;
 		case SYS_READ:
+			check_user_vaddr(f->R.rdi);
+			check_user_vaddr(f->R.rsi);
+			check_user_vaddr(f->R.rdx);
 			read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_WRITE:
+			check_user_vaddr(f->R.rdi);
+			check_user_vaddr(f->R.rsi);
+			check_user_vaddr(f->R.rdx);
 			write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_SEEK:
