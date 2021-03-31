@@ -8,9 +8,13 @@
 #include "threads/flags.h"
 #include "intrinsic.h"
 
-
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
+
+/* Our Implementation */
+#include "threads/synch.h"
+struct lock file_access;
+/* END */
 
 /* System call.
  *
@@ -30,6 +34,10 @@ syscall_init (void) {
 	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
 			((uint64_t)SEL_KCSEG) << 32);
 	write_msr(MSR_LSTAR, (uint64_t) syscall_entry);
+
+	/* Our Implementation */
+	lock_init(&file_access);
+	/* END */
 
 	/* The interrupt service rountine should not serve any interrupts
 	 * until the syscall_entry swaps the userland stack to the kernel
@@ -61,24 +69,103 @@ pid_t exec (const char *cmd_line) {
   return process_exec(cmd_line);
 }
 
-int read (int fd, void* buffer, unsigned size) {
-  int i;
-  if (fd == 0) {
-    for (i = 0; i < size; i ++) {
-      if (((char *)buffer)[i] == '\0') {
-        break;
-      }
-    }
-  }
-  return i;
+pid_t fork (const char *thread_name) {
+	return process_fork(thread_name);
 }
 
-int write(int fd, const void *buffer, unsigned size) {
-	if(fd == 1) {
-		putbuf(buffer, size);
-		return size;
-	}
-	return -1;
+bool create(const char *file, unsigned initial_size) {
+	if (file == NULL) exit(-1);
+	if (strlen(file) == 0) exit(-1);
+	bool ret = filesys_create(file, initial_size);
+	return ret;
+}
+
+bool remove(const char *file) {
+	if (file == NULL) exit(-1);
+	bool ret = filesys_remove(file);
+	return ret;
+}
+
+
+int open(const char *file) {
+	if (file == NULL) exit(-1);
+	int result = -1;
+	lock_acquire(&file_access);
+	result = process_add_file (filesys_open(file));
+	lock_release(&file_access);
+	return result;
+}
+
+int filesize (int fd) {
+	struct file *f = process_get_file (fd);
+	if (f == NULL) return -1;
+	return file_length(f);
+}
+
+int
+read (int fd, void *buffer, unsigned size)
+{
+  struct file *f;
+  lock_acquire (&file_access);
+
+  if (fd == STDIN_FILENO)
+  {
+    // 표준 입력
+    unsigned count = size;
+    while (count--)
+      *((char *)buffer++) = input_getc();
+    lock_release (&file_access);
+    return size;
+  }
+  if ((f = process_get_file (fd)) == NULL)
+    {
+      lock_release (&file_access);
+      return -1;
+    }
+  size = file_read (f, buffer, size);
+  lock_release (&file_access);
+  return size;
+}
+
+int write (int fd, const void *buffer, unsigned size)
+{
+  struct file *f;
+  lock_acquire (&file_access);
+  if (fd == STDOUT_FILENO)
+    {
+      putbuf (buffer, size);
+      lock_release (&file_access);
+      return size;  
+    }
+  if ((f = process_get_file (fd)) == NULL)
+    {
+      lock_release (&file_access);
+      return 0;
+    }
+  size = file_write (f, buffer, size);
+  lock_release (&file_access);
+  return size;
+}
+
+void seek (int fd, unsigned position)
+{
+  struct file *f = process_get_file (fd);
+  if (f == NULL)
+    return;
+  file_seek (f, position);  
+}
+
+unsigned tell (int fd)
+{
+  struct file *f = process_get_file (fd);
+  if (f == NULL)
+    exit (-1);
+  return file_tell (f);
+}
+
+void close (int fd)
+{ 
+  process_close_file (fd);
 }
 
 /* END */
@@ -93,7 +180,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	// printf ("syscall num : %d\n", f->R.rax);
 	// printf ("system call!\n");
 
-
 	switch (f->R.rax) {
 		case SYS_HALT:
 			halt();
@@ -103,19 +189,23 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			exit(f->R.rdi);
 			break;
 		case SYS_FORK:
+			// f->R.rax = fork(f->R.rdi);
 			break;
 		case SYS_EXEC:
 			check_user_vaddr(f->R.rdi);
-			exec(f->R.rdi);
+			f->R.rax = exec(f->R.rdi);
 			break;
 		case SYS_WAIT:
-			wait(f->R.rdi);
+			f->R.rax = wait(f->R.rdi);
 			break;
 		case SYS_CREATE:
+			f->R.rax = create(f->R.rdi, f->R.rsi);
 			break;
 		case SYS_REMOVE:
+			f->R.rax = remove(f->R.rdi);
 			break;
 		case SYS_OPEN:
+			f->R.rax = open(f->R.rdi);
 			break;
 		case SYS_FILESIZE:
 			break;
@@ -123,13 +213,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			check_user_vaddr(f->R.rdi);
 			check_user_vaddr(f->R.rsi);
 			check_user_vaddr(f->R.rdx);
-			read(f->R.rdi, f->R.rsi, f->R.rdx);
+			f->R.rdi = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_WRITE:
 			check_user_vaddr(f->R.rdi);
 			check_user_vaddr(f->R.rsi);
 			check_user_vaddr(f->R.rdx);
-			write(f->R.rdi, f->R.rsi, f->R.rdx);
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_SEEK:
 			break;

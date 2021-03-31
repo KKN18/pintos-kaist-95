@@ -34,6 +34,31 @@ process_init (void) {
 	struct thread *current = thread_current ();
 }
 
+/* Our Implementation */
+int process_add_file (struct file *f) {
+	if (f == NULL) return -1;
+	int fd = thread_current()->next_fd++;
+	thread_current()->fd_table[fd] = f;
+	return fd;
+}
+
+struct file *process_get_file (int fd) {
+	struct thread *t = thread_current();
+	if (fd <= 1 || t->next_fd <= fd) return NULL;
+	return t->fd_table[fd];
+}
+
+void process_close_file (int fd)
+{
+	struct thread *t = thread_current ();
+	if (fd <= 1 || t->next_fd <= fd)
+	return;
+	// file_close는 NULL을 무시합니다.
+	file_close (t->fd_table[fd]);
+	t->fd_table[fd] = NULL;
+}
+/* END */
+
 /* Starts the first userland program, called "initd", loaded from FILE_NAME.
  * The new thread may be scheduled (and may even exit)
  * before process_create_initd() returns. Returns the initd's
@@ -98,26 +123,38 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	struct thread *parent = (struct thread *) aux;
 	void *parent_page;
 	void *newpage;
-	bool writable;
+	bool writable = false;
 
+	/* Our Implementation */
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
+	if(is_kern_pte(pte))
+		return true;
 
 	/* 2. Resolve VA from the parent's page map level 4. */
 	parent_page = pml4_get_page (parent->pml4, va);
 
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
+	newpage = palloc_get_page(PAL_USER);
 
 	/* 4. TODO: Duplicate parent's page to the new page and
 	 *    TODO: check whether parent's page is writable or not (set WRITABLE
 	 *    TODO: according to the result). */
+	
+	memcpy(newpage, parent_page, PGSIZE);
+	if(is_writable(pte))
+		writable = true;
 
 	/* 5. Add new page to child's page table at address VA with WRITABLE
 	 *    permission. */
 	if (!pml4_set_page (current->pml4, va, newpage, writable)) {
 		/* 6. TODO: if fail to insert page, do error handling. */
+		// Free newpage and return false?
+		palloc_free_page(newpage);
+		return false;
 	}
 	return true;
+	/* END */
 }
 #endif
 
@@ -157,7 +194,9 @@ __do_fork (void *aux) {
 	 * TODO:       in include/filesys/file.h. Note that parent should not return
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
-
+	/* Our Implementation */
+	// if(flie_duplicate())
+	/* END */
 	process_init ();
 
 	/* Finally, switch to the newly created process. */

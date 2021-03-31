@@ -236,10 +236,21 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	/* Our Implementation */
+	t->fd_table = palloc_get_multiple(PAL_ZERO, 2);
+	if (t->fd_table == NULL)
+	{
+		palloc_free_page(t);
+		return TID_ERROR;
+	}
+	t->next_fd = 2;
+	t->fd_table -= t->next_fd;
+	/* END */
+
 	/* Add to run queue. */
 	thread_unblock (t);
 
-	/* Our Implementation */
+	/* Our Implementation */		
 	struct thread *curr = thread_current();
 	/* If newly created thread has higher priority than current,
 	   reschedule. */
