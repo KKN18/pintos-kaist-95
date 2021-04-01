@@ -108,6 +108,8 @@ struct thread {
 	/* Owned by userprog/process.c. */
 	int next_fd;
 	struct file **fd_table;
+	int fd;
+	struct list file_list;
 	uint64_t *pml4;                     /* Page map level 4 */
 #endif
 #ifdef VM

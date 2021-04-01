@@ -508,6 +508,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
 	/* Our implementation */
+	t->fd = 2;
+	list_init(&t->file_list);
 	t->wake_tick = 0;
 	list_init(&t->donation_list);
 	t->base_priority = priority;

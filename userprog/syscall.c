@@ -12,6 +12,9 @@ void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
 /* Our Implementation */
+#include "filesys/inode.h"
+#include "filesys/file.h"
+#include "filesys/filesys.h"
 #include "threads/synch.h"
 struct lock file_access;
 /* END */
@@ -47,6 +50,66 @@ syscall_init (void) {
 }
 
 /* Our Implementation */
+int
+add_file (struct file *file_name)
+{
+  struct process_file *process_file_ptr = malloc(sizeof(struct process_file));
+  if (!process_file_ptr)
+  {
+    return -1;
+  }
+  
+  process_file_ptr->file = file_name;
+  process_file_ptr->fd = thread_current()->fd;
+  thread_current()->fd++;
+  list_push_back(&thread_current()->file_list, &process_file_ptr->elem);
+  return process_file_ptr->fd;
+  
+}
+
+struct file*
+get_file (int filedes)
+{
+  struct thread *t = thread_current();
+  struct list_elem* next;
+  struct list_elem* e = list_begin(&t->file_list);
+  
+  for (; e != list_end(&t->file_list); e = next)
+  {
+    next = list_next(e);
+    struct process_file *process_file_ptr = list_entry(e, struct process_file, elem);
+    if (filedes == process_file_ptr->fd)
+    {
+      return process_file_ptr->file;
+    }
+  }
+  return NULL; // nothing found
+}
+
+void
+process_close_file (int file_descriptor)
+{
+  struct thread *t = thread_current();
+  struct list_elem *next;
+  struct list_elem *e = list_begin(&t->file_list);
+  
+  for (;e != list_end(&t->file_list); e = next)
+  {
+    next = list_next(e);
+    struct process_file *process_file_ptr = list_entry (e, struct process_file, elem);
+    if (file_descriptor == process_file_ptr->fd)
+    {
+      file_close(process_file_ptr->file);
+      list_remove(&process_file_ptr->elem);
+      free(process_file_ptr);
+    //   if (file_descriptor != CLOSE_ALL_FD)
+    //   {
+    //     return;
+    //   }
+    }
+  }
+}
+
 void check_user_vaddr(const void *vaddr) {
    if (!is_user_vaddr(vaddr))
       exit(-1);
@@ -87,64 +150,90 @@ bool remove(const char *file) {
 }
 
 
-int open(const char *file) {
-	if (file == NULL) exit(-1);
-	int result = -1;
+int open(const char *file_name) {
 	lock_acquire(&file_access);
-	result = process_add_file (filesys_open(file));
+	struct file *file_ptr;
+  	file_ptr = filesys_open(file_name); // from filesys.h
+	// printf("file length : %d\n", file_length(file_ptr));
+	if (!file_ptr)
+	{
+		lock_release(&file_access);
+	}
+	int filedes = add_file(file_ptr);
+	// printf("Length : %d\n", inode_length(file_get_inode()));
 	lock_release(&file_access);
-	return result;
+	return filedes;
 }
 
 int filesize (int fd) {
-	struct file *f = process_get_file (fd);
-	if (f == NULL) return -1;
-	return file_length(f);
+	lock_acquire(&file_access);
+	struct file *file_ptr = get_file(fd);
+	if (!file_ptr)
+	{
+		lock_release(&file_access);
+		return -1;
+	}
+	int filesize = inode_length(file_get_inode(file_ptr));
+	lock_release(&file_access);
+	return filesize;
 }
 
 int
 read (int fd, void *buffer, unsigned size)
 {
-  struct file *f;
-  lock_acquire (&file_access);
-
-  if (fd == STDIN_FILENO)
-  {
-    // 표준 입력
-    unsigned count = size;
-    while (count--)
-      *((char *)buffer++) = input_getc();
-    lock_release (&file_access);
-    return size;
-  }
-  if ((f = process_get_file (fd)) == NULL)
-    {
-      lock_release (&file_access);
-      return -1;
-    }
-  size = file_read (f, buffer, size);
-  lock_release (&file_access);
-  return size;
+	if (size <= 0)
+	{
+		return size;
+	}
+	// printf("read size : %d\n", size);
+	if (fd == 0)
+	{
+		unsigned i = 0;
+		uint64_t *local_buf = (uint64_t *) buffer;
+		for (;i < size; i++)
+		{
+		// retrieve pressed key from the input buffer
+			local_buf[i] = input_getc(); // from input.h
+		}
+		return size;
+	}
+	
+	/* read from file */
+	lock_acquire(&file_access);
+	struct file *file_ptr = get_file(fd);
+	if (!file_ptr)
+	{
+		lock_release(&file_access);
+		return -1;
+	}
+	int bytes_read = file_read(file_ptr, buffer, size); // from file.h
+	lock_release (&file_access);
+	return bytes_read;
 }
 
 int write (int fd, const void *buffer, unsigned size)
 {
-  struct file *f;
-  lock_acquire (&file_access);
-  if (fd == STDOUT_FILENO)
+	if (size <= 0)
     {
-      putbuf (buffer, size);
-      lock_release (&file_access);
-      return size;  
+      return size;
     }
-  if ((f = process_get_file (fd)) == NULL)
+    if (fd == 1)
     {
-      lock_release (&file_access);
-      return 0;
+      putbuf (buffer, size); // from stdio.h
+      return size;
     }
-  size = file_write (f, buffer, size);
-  lock_release (&file_access);
-  return size;
+    
+    // start writing to file
+    lock_acquire(&file_access);
+    struct file *file_ptr = get_file(fd);
+    if (!file_ptr)
+    {
+      lock_release(&file_access);
+      return -1;
+    }
+    int bytes_written = file_write(file_ptr, buffer, size); // file.h
+    lock_release (&file_access);
+    return bytes_written;
 }
 
 void seek (int fd, unsigned position)
@@ -165,7 +254,9 @@ unsigned tell (int fd)
 
 void close (int fd)
 { 
-  process_close_file (fd);
+	lock_acquire(&file_access);
+  	process_close_file (fd);
+	lock_release(&file_access);
 }
 
 /* END */
@@ -208,12 +299,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax = open(f->R.rdi);
 			break;
 		case SYS_FILESIZE:
+			f->R.rax = filesize(f->R.rdi);
 			break;
 		case SYS_READ:
 			check_user_vaddr(f->R.rdi);
 			check_user_vaddr(f->R.rsi);
 			check_user_vaddr(f->R.rdx);
-			f->R.rdi = read(f->R.rdi, f->R.rsi, f->R.rdx);
+			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_WRITE:
 			check_user_vaddr(f->R.rdi);
@@ -222,10 +314,17 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_SEEK:
+			check_user_vaddr(f->R.rdi);
+			check_user_vaddr(f->R.rsi);
+			seek(f->R.rdi, f->R.rsi);
 			break;
 		case SYS_TELL:
+			check_user_vaddr(f->R.rdi);
+			f->R.rax = tell(f->R.rdi);
 			break;
 		case SYS_CLOSE:
+			check_user_vaddr(f->R.rdi);
+			close(f->R.rdi);
 			break;
 	}
 	/* END */

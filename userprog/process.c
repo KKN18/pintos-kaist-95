@@ -35,12 +35,19 @@ process_init (void) {
 }
 
 /* Our Implementation */
-int process_add_file (struct file *f) {
-	if (f == NULL) return -1;
-	int fd = thread_current()->next_fd++;
-	thread_current()->fd_table[fd] = f;
-	return fd;
-}
+// int process_add_file (struct file *f) {
+// 	if (f == NULL) return -1;
+// 	int fd = thread_current()->next_fd++;
+// 	thread_current()->fd_table[fd] = f;
+// 	return fd;
+// }
+
+// int process_add_file (struct file *f) {
+// 	if (f == NULL) return -1;
+// 	int fd = thread_current()->next_fd++;
+// 	list_push_back(&thread_current()->file_list, f->)
+// 	return fd;
+// }
 
 struct file *process_get_file (int fd) {
 	struct thread *t = thread_current();
@@ -48,15 +55,15 @@ struct file *process_get_file (int fd) {
 	return t->fd_table[fd];
 }
 
-void process_close_file (int fd)
-{
-	struct thread *t = thread_current ();
-	if (fd <= 1 || t->next_fd <= fd)
-	return;
-	// file_close는 NULL을 무시합니다.
-	file_close (t->fd_table[fd]);
-	t->fd_table[fd] = NULL;
-}
+// void process_close_file (int fd)
+// {
+// 	struct thread *t = thread_current ();
+// 	if (fd <= 1 || t->next_fd <= fd)
+// 	return;
+// 	// file_close는 NULL을 무시합니다.
+// 	file_close (t->fd_table[fd]);
+// 	t->fd_table[fd] = NULL;
+// }
 /* END */
 
 /* Starts the first userland program, called "initd", loaded from FILE_NAME.
