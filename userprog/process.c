@@ -49,11 +49,11 @@ process_init (void) {
 // 	return fd;
 // }
 
-struct file *process_get_file (int fd) {
-	struct thread *t = thread_current();
-	if (fd <= 1 || t->next_fd <= fd) return NULL;
-	return t->fd_table[fd];
-}
+// struct file *process_get_file (int fd) {
+// 	struct thread *t = thread_current();
+// 	if (fd <= 1 || t->next_fd <= fd) return NULL;
+// 	return t->fd_table[fd];
+// }
 
 // void process_close_file (int fd)
 // {

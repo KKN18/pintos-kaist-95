@@ -49,70 +49,51 @@ syscall_init (void) {
 			FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
 
-/* Our Implementation */
-int
-add_file (struct file *file_name)
-{
-  struct process_file *process_file_ptr = malloc(sizeof(struct process_file));
-  if (!process_file_ptr)
-  {
-    return -1;
-  }
-  
-  process_file_ptr->file = file_name;
-  process_file_ptr->fd = thread_current()->fd;
-  thread_current()->fd++;
-  list_push_back(&thread_current()->file_list, &process_file_ptr->elem);
-  return process_file_ptr->fd;
-  
+
+
+// Renamed Implementation
+int allocate_fd (struct file *f) {
+	struct file_info *fi = malloc(sizeof(struct file_info));
+	struct thread *curr = thread_current();
+	int empty_fd = curr->fd;
+	curr->fd += 1;
+
+	fi->file = f;
+	fi->fd = empty_fd;
+	list_push_back(&curr->file_list, &fi->file_elem);
+	
+	return empty_fd;
 }
 
-struct file*
-get_file (int filedes)
-{
-  struct thread *t = thread_current();
-  struct list_elem* next;
-  struct list_elem* e = list_begin(&t->file_list);
-  
-  for (; e != list_end(&t->file_list); e = next)
-  {
-    next = list_next(e);
-    struct process_file *process_file_ptr = list_entry(e, struct process_file, elem);
-    if (filedes == process_file_ptr->fd)
-    {
-      return process_file_ptr->file;
-    }
-  }
-  return NULL; // nothing found
+
+struct file_info *search_file_info (int fd) {
+	struct thread *curr = thread_current();
+	struct list_elem *p = list_begin(&curr->file_list);
+
+	for (p; p != list_end(&curr->file_list); p = list_next(p))
+	{
+		struct file_info *fi = list_entry(p, struct file_info, file_elem);
+		if (fi->fd == fd) return fi;
+	}
+	return NULL;
 }
 
-void
-process_close_file (int file_descriptor)
-{
-  struct thread *t = thread_current();
-  struct list_elem *next;
-  struct list_elem *e = list_begin(&t->file_list);
-  
-  for (;e != list_end(&t->file_list); e = next)
-  {
-    next = list_next(e);
-    struct process_file *process_file_ptr = list_entry (e, struct process_file, elem);
-    if (file_descriptor == process_file_ptr->fd)
-    {
-      file_close(process_file_ptr->file);
-      list_remove(&process_file_ptr->elem);
-      free(process_file_ptr);
-    //   if (file_descriptor != CLOSE_ALL_FD)
-    //   {
-    //     return;
-    //   }
-    }
-  }
+struct file *search_file (int fd) {
+	struct file_info *fi = search_file_info(fd);
+	if (!fi) return NULL;
+	return fi->file;
 }
 
-void check_user_vaddr(const void *vaddr) {
-   if (!is_user_vaddr(vaddr))
-      exit(-1);
+void delete_file (int fd) {
+	struct file_info *fi = search_file_info(fd);
+	if (!fi) return;
+	file_close(fi->file);
+	list_remove(&fi->file_elem);
+	free(fi);
+}
+
+void assert_valid_useraddr(const void *vaddr) {
+   if (!is_user_vaddr(vaddr))  exit(-1);
 }
 
 void halt (void) {
@@ -132,130 +113,118 @@ pid_t exec (const char *cmd_line) {
   return process_exec(cmd_line);
 }
 
-pid_t fork (const char *thread_name) {
-	return process_fork(thread_name);
+pid_t sys_fork (const char *thread_name, struct intr_frame *if_) {
+	return process_fork(thread_name, if_);
 }
 
 bool create(const char *file, unsigned initial_size) {
 	if (file == NULL) exit(-1);
-	if (strlen(file) == 0) exit(-1);
+	if (strlen(file) == 0) return false;
 	bool ret = filesys_create(file, initial_size);
 	return ret;
 }
 
 bool remove(const char *file) {
-	if (file == NULL) exit(-1);
+	if (file == NULL) return false;
 	bool ret = filesys_remove(file);
 	return ret;
 }
 
-
-int open(const char *file_name) {
+int open(const char *file) {
+	if (!file) exit(-1);
 	lock_acquire(&file_access);
-	struct file *file_ptr;
-  	file_ptr = filesys_open(file_name); // from filesys.h
-	// printf("file length : %d\n", file_length(file_ptr));
-	if (!file_ptr)
-	{
-		lock_release(&file_access);
-	}
-	int filedes = add_file(file_ptr);
-	// printf("Length : %d\n", inode_length(file_get_inode()));
-	lock_release(&file_access);
-	return filedes;
-}
-
-int filesize (int fd) {
-	lock_acquire(&file_access);
-	struct file *file_ptr = get_file(fd);
-	if (!file_ptr)
+	struct file *f;
+  	f = filesys_open(file); 
+	if (!f) 
 	{
 		lock_release(&file_access);
 		return -1;
 	}
-	int filesize = inode_length(file_get_inode(file_ptr));
+	int fd = allocate_fd(f);
 	lock_release(&file_access);
-	return filesize;
+	return fd;
+}
+
+int filesize (int fd) {
+	lock_acquire(&file_access);
+	struct file *f = search_file(fd);
+	if (!f)
+	{
+		lock_release(&file_access);
+		exit(-1);
+	}
+	int ret = inode_length(file_get_inode(f));
+	lock_release(&file_access);
+	return ret;
 }
 
 int
 read (int fd, void *buffer, unsigned size)
 {
-	if (size <= 0)
-	{
-		return size;
-	}
-	// printf("read size : %d\n", size);
 	if (fd == 0)
 	{
-		unsigned i = 0;
-		uint64_t *local_buf = (uint64_t *) buffer;
-		for (;i < size; i++)
+		uint64_t *buf = (uint64_t *) buffer;
+		unsigned iRead=0;
+		while (iRead < size)
 		{
-		// retrieve pressed key from the input buffer
-			local_buf[i] = input_getc(); // from input.h
+			buf[iRead] = input_getc();
+			iRead+=1;
 		}
-		return size;
+		return iRead;
 	}
-	
-	/* read from file */
-	lock_acquire(&file_access);
-	struct file *file_ptr = get_file(fd);
-	if (!file_ptr)
+	else
 	{
-		lock_release(&file_access);
-		return -1;
+		lock_acquire(&file_access);
+		struct file *file = search_file(fd);
+		if (!file)
+		{
+			lock_release(&file_access);
+			return -1;
+		}
+		int iRead = file_read(file, buffer, size); // from file.h
+		lock_release (&file_access);
+		return iRead;
 	}
-	int bytes_read = file_read(file_ptr, buffer, size); // from file.h
-	lock_release (&file_access);
-	return bytes_read;
 }
 
 int write (int fd, const void *buffer, unsigned size)
 {
-	if (size <= 0)
-    {
-      return size;
-    }
     if (fd == 1)
     {
       putbuf (buffer, size); // from stdio.h
       return size;
     }
-    
-    // start writing to file
+
     lock_acquire(&file_access);
-    struct file *file_ptr = get_file(fd);
-    if (!file_ptr)
+    struct file *file = search_file(fd);
+    if (!file)
     {
       lock_release(&file_access);
       return -1;
     }
-    int bytes_written = file_write(file_ptr, buffer, size); // file.h
+    int iWrite = file_write(file, buffer, size); // file.h
     lock_release (&file_access);
-    return bytes_written;
+    return iWrite;
 }
 
 void seek (int fd, unsigned position)
 {
-  struct file *f = process_get_file (fd);
-  if (f == NULL)
-    return;
-  file_seek (f, position);  
+  struct file *file = search_file(fd);
+  if (!file) return;
+  file_seek (file, position);  
 }
 
 unsigned tell (int fd)
 {
-  struct file *f = process_get_file (fd);
-  if (f == NULL)
-    exit (-1);
-  return file_tell (f);
+  struct file *file = search_file (fd);
+  if (!file) exit (-1);
+  return file_tell (file);
 }
 
 void close (int fd)
 { 
 	lock_acquire(&file_access);
-  	process_close_file (fd);
+  	delete_file (fd);
 	lock_release(&file_access);
 }
 
@@ -276,54 +245,59 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			halt();
 			break;
 		case SYS_EXIT:
-			check_user_vaddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi);
 			exit(f->R.rdi);
 			break;
 		case SYS_FORK:
 			// f->R.rax = fork(f->R.rdi);
 			break;
 		case SYS_EXEC:
-			check_user_vaddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi);
 			f->R.rax = exec(f->R.rdi);
 			break;
 		case SYS_WAIT:
+			assert_valid_useraddr(f->R.rdi);
 			f->R.rax = wait(f->R.rdi);
 			break;
 		case SYS_CREATE:
+			assert_valid_useraddr(f->R.rdi);
 			f->R.rax = create(f->R.rdi, f->R.rsi);
 			break;
 		case SYS_REMOVE:
+			assert_valid_useraddr(f->R.rdi);
 			f->R.rax = remove(f->R.rdi);
 			break;
 		case SYS_OPEN:
+			assert_valid_useraddr(f->R.rdi);
 			f->R.rax = open(f->R.rdi);
 			break;
 		case SYS_FILESIZE:
+			assert_valid_useraddr(f->R.rdi);
 			f->R.rax = filesize(f->R.rdi);
 			break;
 		case SYS_READ:
-			check_user_vaddr(f->R.rdi);
-			check_user_vaddr(f->R.rsi);
-			check_user_vaddr(f->R.rdx);
+			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rsi);
+			assert_valid_useraddr(f->R.rdx);
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_WRITE:
-			check_user_vaddr(f->R.rdi);
-			check_user_vaddr(f->R.rsi);
-			check_user_vaddr(f->R.rdx);
+			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rsi);
+			assert_valid_useraddr(f->R.rdx);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_SEEK:
-			check_user_vaddr(f->R.rdi);
-			check_user_vaddr(f->R.rsi);
+			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rsi);
 			seek(f->R.rdi, f->R.rsi);
 			break;
 		case SYS_TELL:
-			check_user_vaddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi);
 			f->R.rax = tell(f->R.rdi);
 			break;
 		case SYS_CLOSE:
-			check_user_vaddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi);
 			close(f->R.rdi);
 			break;
 	}

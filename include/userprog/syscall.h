@@ -4,11 +4,15 @@
 #include "lib/user/syscall.h"
 #include "lib/kernel/list.h"
 
-struct process_file {
-    struct file *file;
-    int fd;
-    struct list_elem elem;
+
+
+// Renamed Implementation
+struct file_info {
+    struct file *file;          // target file
+    int fd;                     // located file descriptor
+    struct list_elem file_elem; // file_list element
 };
+// END
 
 void syscall_init (void);
 

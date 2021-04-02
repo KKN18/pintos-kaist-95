@@ -106,10 +106,11 @@ struct thread {
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
-	int next_fd;
-	struct file **fd_table;
+	// Renamed Implementation
 	int fd;
 	struct list file_list;
+	// END
+
 	uint64_t *pml4;                     /* Page map level 4 */
 #endif
 #ifdef VM
