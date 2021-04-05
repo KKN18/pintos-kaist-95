@@ -5,6 +5,9 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+/* Our Implementation */
+#include "threads/synch.h"
+// END
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -111,6 +114,32 @@ struct thread {
 	struct list file_list;
 	// END
 
+	// 부모의 자식 리스트에 들어가는 원소입니다.
+    struct list_elem child_elem;
+
+    // 현재 스레드의 자식 스레드 리스트입니다. 오직 이 스레드만이
+    // 이 리스트를 변경할 것이므로 동기화하지 않아도 됩니다.
+    struct list child_list;
+
+    // 종료 상태를 나타냅니다.
+    int exit_status;
+
+	// RYU Test
+    // 증가: 이 스레드가 종료되려고 할 때
+    // 감소: 이 스레드의 종료를 "대기"하기 위하여
+    struct semaphore wait_sema;
+
+    // 증가: 이 스레드 자료 구조를 제거해도 좋을 상황이 되었을 때
+    // 감소: 이 스레드 자료 구조를 "제거"하기 직전
+    struct semaphore destroy_sema;
+
+    // 적재 성공 여부입니다.
+    bool load_succeeded;
+
+    // 증가: 성공 여부를 따지지 않고, 적재 작업이 완료되었을 때
+    // 감소: 부모 프로세스의 exec에서 적재 완료 대기
+    struct semaphore load_sema;
+
 	uint64_t *pml4;                     /* Page map level 4 */
 #endif
 #ifdef VM
@@ -176,4 +205,7 @@ void thread_preempt (void);
 void thread_donate (struct thread *, struct thread *, int);
 void update_donate_priority (struct thread *);
 void thread_remove_lock (struct lock *);
+
+// RYU Test
+struct thread *thread_get_child (tid_t tid);
 #endif /* threads/thread.h */

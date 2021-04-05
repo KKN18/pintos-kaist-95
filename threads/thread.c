@@ -236,7 +236,8 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
-
+	// RYU Test
+	list_push_back (&thread_current ()->child_list, &t->child_elem);
 
 	/* Add to run queue. */
 	thread_unblock (t);
@@ -331,6 +332,27 @@ thread_exit (void) {
 
 #ifdef USERPROG
 	process_exit ();
+
+	struct list_elem *child;
+
+	// 지금까지 이 프로세스가 wait하지 않은 모든 자식 프로세스가
+	// 이 프로세스와 상관없이 종료될 수 있도록 합니다.
+	for (child = list_begin (&thread_current ()->child_list);
+		child != list_end (&thread_current ()->child_list); )
+	{
+		struct thread *t = list_entry (child, struct thread, child_elem);
+		child = list_remove (child);
+		sema_up (&t->destroy_sema);
+	}
+
+	ASSERT (thread_current()->wait_on_lock == NULL);
+
+	// 부모 프로세스의 wait를 재개할 수 있도록 합니다.
+	sema_up (&thread_current ()->wait_sema);
+
+	// 부모 프로세스의 wait 완료 또는 부모 프로세스의 종료가
+	// 일어나기를 기다립니다.
+	sema_down (&thread_current ()->destroy_sema);
 #endif
 
 	/* Just set our status to dying and schedule another process.
@@ -502,6 +524,17 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->fd = 2;
 	list_init(&t->file_list);
 	// END
+
+#ifdef USERPROG
+	// RYU Test
+	// 세마포어 초기화
+	sema_init (&t->wait_sema, 0);
+	sema_init (&t->destroy_sema, 0);
+	sema_init (&t->load_sema, 0);
+
+	// 자식 스레드 리스트 초기화
+	list_init (&t->child_list);
+#endif
 
 	t->wake_tick = 0;
 	list_init(&t->donation_list);
@@ -952,3 +985,21 @@ void update_all_mlfqs (void) {
       list_sort(&ready_list, less_thread_priority, NULL);
 }
 /* END */
+
+// RYU Test
+struct thread *
+thread_get_child (tid_t tid)
+{
+	struct list_elem *e;
+	for (e = list_begin (&thread_current ()->child_list);
+		e != list_end (&thread_current ()->child_list);
+		e = list_next (e))
+	{
+		struct thread *t = list_entry (e, struct thread, child_elem);
+		// 같은 것을 찾았으면 바로 반환합니다.
+		if (t->tid == tid)
+		return t;
+	}
+	// 찾지 못했습니다.
+	return NULL;
+}
