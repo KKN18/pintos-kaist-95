@@ -7,6 +7,7 @@
 #include <string.h>
 #include "userprog/gdt.h"
 #include "userprog/tss.h"
+#include "userprog/syscall.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -227,17 +228,18 @@ process_exec (void *f_name) {
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
-
 	/* We first kill the current context */
+	/* Our Implementation */
+	char file_copy[256];
+	strlcpy(file_copy, file_name, strlen(file_name) + 1);
 	process_cleanup ();
-
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	// printf("file : %s\n", file_name);
+	success = load (file_copy, &_if);
 	struct thread *t = thread_current();
 #ifdef USERPROG
 	t->load_succeeded = success;
 
-	// RYU Test
 	// 부모 프로세스에서 exec 함수 수행을 재개해도 좋습니다.
   	sema_up (&t->load_sema);
 #endif
@@ -306,7 +308,12 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-
+	int fd = curr->next_fd - 1;
+	for (fd; fd>=2; fd--) 
+		file_close(curr->fd_table[fd]);
+	curr->next_fd = 2;
+	// ASSERT(file_deny_cnt(curr->prog_file) != 0);
+	file_close(curr->prog_file);
 	process_cleanup ();
 }
 
@@ -506,15 +513,16 @@ load (const char *file_name, struct intr_frame *if_) {
 	off_t file_ofs;
 	bool success = false;
 	int i;
-
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
 		goto done;
 	process_activate (thread_current ());
-
+	
 	/* Our Implementation */
-	char *filename_copy = calloc(strlen(file_name)+1, sizeof(char));
+	char filename_copy[128];
+	// char *filename_copy = calloc(strlen(file_name)+1, sizeof(char));
+	
 	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
 	char *argptr;
 	strtok_r(filename_copy, " ", &argptr);
@@ -531,14 +539,18 @@ load (const char *file_name, struct intr_frame *if_) {
 	*/
 	
 	/* Our Implementation */
+	lock_acquire(&file_access);
 	file = filesys_open (filename_copy);
 	if (file == NULL) {
+		lock_release(&file_access);
 		printf ("load: %s: open failed\n", filename_copy);
+		success = -1;
 		goto done;
 	}
-	free(filename_copy);
+	t->prog_file = file;
+	file_deny_write(t->prog_file);
+	lock_release(&file_access);
 	/* END */
-
 	/* Read and verify executable header. */
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
 			|| memcmp (ehdr.e_ident, "\177ELF\2\1\1", 7)
@@ -620,7 +632,7 @@ load (const char *file_name, struct intr_frame *if_) {
 
 done:
 	/* We arrive here whether the load is successful or not. */
-	file_close (file);
+	// file_close (file);
 	return success;
 }
 

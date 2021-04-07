@@ -36,6 +36,12 @@ struct inode {
 	struct inode_disk data;             /* Inode content. */
 };
 
+/* For Debug */
+int deny_cnt (struct inode *inode){
+	return inode->deny_write_cnt;
+}
+/* END */
+
 /* Returns the disk sector that contains byte offset POS within
  * INODE.
  * Returns -1 if INODE does not contain data for a byte at offset

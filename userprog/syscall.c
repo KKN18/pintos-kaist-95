@@ -32,7 +32,13 @@ struct lock file_access;
 #define MSR_LSTAR 0xc0000082        /* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
 
-void
+/* Copy file structure */
+struct file {
+	struct inode *inode;        /* File's inode. */
+	off_t pos;                  /* Current position. */
+	bool deny_write;            /* Has file_deny_write() been called? */
+};
+
 syscall_init (void) {
 	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
 			((uint64_t)SEL_KCSEG) << 32);
@@ -53,43 +59,26 @@ syscall_init (void) {
 
 // Renamed Implementation
 int allocate_fd (struct file *f) {
-	struct file_info *fi = malloc(sizeof(struct file_info));
-	struct thread *curr = thread_current();
-	int empty_fd = curr->fd;
-	curr->fd += 1;
-
-	fi->file = f;
-	fi->fd = empty_fd;
-	list_push_back(&curr->file_list, &fi->file_elem);
+	int next_fd = thread_current()->next_fd++;
+	ASSERT(next_fd == (thread_current()->next_fd - 1))
+	if (strcmp(thread_current()->name, f) == 0)
+		file_deny_write(f);
+	thread_current()->fd_table[next_fd] = f;
 	
-	return empty_fd;
+	return next_fd;
 }
 
 
-struct file_info *search_file_info (int fd) {
-	struct thread *curr = thread_current();
-	struct list_elem *p = list_begin(&curr->file_list);
-
-	for (p; p != list_end(&curr->file_list); p = list_next(p))
-	{
-		struct file_info *fi = list_entry(p, struct file_info, file_elem);
-		if (fi->fd == fd) return fi;
-	}
-	return NULL;
-}
 
 struct file *search_file (int fd) {
-	struct file_info *fi = search_file_info(fd);
-	if (!fi) return NULL;
-	return fi->file;
+	return thread_current()->fd_table[fd];
 }
 
 void delete_file (int fd) {
-	struct file_info *fi = search_file_info(fd);
-	if (!fi) return;
-	file_close(fi->file);
-	list_remove(&fi->file_elem);
-	free(fi);
+	struct file* file = search_file(fd);
+	if (file == NULL) return;
+	file_close(file);
+	thread_current()->fd_table[fd] = NULL;
 }
 
 void assert_valid_useraddr(const void *vaddr) {
@@ -105,7 +94,6 @@ void exit(int status) {
 	thread_exit();
 }
 
-
 int wait(pid_t pid) {
 	return process_wait(pid);
 }
@@ -117,23 +105,26 @@ pid_t exec (const char *cmd_line) {
 
 pid_t exec (const char *file)
 {
-	tid_t tid;
-	struct thread *child;
+	// tid_t tid;
+	// struct thread *child;
 
-	// 여기에서 실패하면 스레드 자료 구조 생성 실패입니다.
-	if ((tid = process_create_initd (file)) == TID_ERROR)
-		return TID_ERROR;
+	// // 여기에서 실패하면 스레드 자료 구조 생성 실패입니다.
+	// if ((tid = process_create_initd (file)) == TID_ERROR)
+	// 	return TID_ERROR;
 
-	child = thread_get_child (tid);
-	ASSERT (child);
+	// child = thread_get_child (tid);
+	// ASSERT (child);
 
-	sema_down (&child->load_sema);
+	// sema_down (&child->load_sema);
 
-	// 여기에서 실패하면 프로그램 적재 실패입니다.
-	if (!child->load_succeeded)
-		return TID_ERROR;
-
-	return tid;
+	// // 여기에서 실패하면 프로그램 적재 실패입니다.
+	// if (!child->load_succeeded)
+	// 	return TID_ERROR;
+	
+	int exec_ret = process_exec(file);
+	if (exec_ret == -1)
+		return exec_ret;
+	return 0;
 }
 
 pid_t sys_fork (const char *thread_name, struct intr_frame *if_) {
@@ -143,22 +134,19 @@ pid_t sys_fork (const char *thread_name, struct intr_frame *if_) {
 bool create(const char *file, unsigned initial_size) {
 	if (file == NULL) exit(-1);
 	if (strlen(file) == 0) return false;
-	bool ret = filesys_create(file, initial_size);
-	return ret;
+	return filesys_create(file, initial_size);
 }
 
 bool remove(const char *file) {
 	if (file == NULL) return false;
-	bool ret = filesys_remove(file);
-	return ret;
+	return filesys_remove(file);
 }
 
 int open(const char *file) {
 	if (!file) exit(-1);
 	lock_acquire(&file_access);
-	struct file *f;
-  	f = filesys_open(file); 
-	if (!f) 
+	struct file *f = filesys_open(file); 
+	if (f == NULL) 
 	{
 		lock_release(&file_access);
 		return -1;
@@ -176,7 +164,7 @@ int filesize (int fd) {
 		lock_release(&file_access);
 		exit(-1);
 	}
-	int ret = inode_length(file_get_inode(f));
+	int ret = file_length(f);
 	lock_release(&file_access);
 	return ret;
 }
@@ -184,6 +172,7 @@ int filesize (int fd) {
 int
 read (int fd, void *buffer, unsigned size)
 {
+	lock_acquire(&file_access);
 	if (fd == 0)
 	{
 		uint64_t *buf = (uint64_t *) buffer;
@@ -193,11 +182,11 @@ read (int fd, void *buffer, unsigned size)
 			buf[iRead] = input_getc();
 			iRead+=1;
 		}
+		lock_release(&file_access);
 		return iRead;
 	}
 	else
 	{
-		lock_acquire(&file_access);
 		struct file *file = search_file(fd);
 		if (!file)
 		{
@@ -212,19 +201,22 @@ read (int fd, void *buffer, unsigned size)
 
 int write (int fd, const void *buffer, unsigned size)
 {
+	lock_acquire(&file_access);
     if (fd == 1)
     {
       putbuf (buffer, size); // from stdio.h
+	  lock_release(&file_access);
       return size;
     }
 
-    lock_acquire(&file_access);
     struct file *file = search_file(fd);
     if (!file)
     {
       lock_release(&file_access);
       return -1;
     }
+	if (file->deny_write)
+		file_deny_write(file);
     int iWrite = file_write(file, buffer, size); // file.h
     lock_release (&file_access);
     return iWrite;

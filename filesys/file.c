@@ -125,6 +125,10 @@ file_deny_write (struct file *file) {
 	}
 }
 
+int file_deny_cnt (struct file *file){
+	return deny_cnt(file->inode);
+}
+
 /* Re-enables write operations on FILE's underlying inode.
  * (Writes might still be denied by some other file that has the
  * same inode open.) */

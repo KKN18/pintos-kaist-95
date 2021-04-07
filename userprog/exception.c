@@ -140,8 +140,8 @@ page_fault (struct intr_frame *f) {
 	write = (f->error_code & PF_W) != 0;
 	user = (f->error_code & PF_U) != 0;
 
-	// Renamed Implementation
-   	if (!user || is_kernel_vaddr(fault_addr)) 
+	// Our Implementation
+   	if (!user || is_kernel_vaddr(fault_addr) || not_present) 
 	{
        exit(-1);
     }
