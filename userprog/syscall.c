@@ -97,7 +97,9 @@ int wait(pid_t pid) {
 }
 
 pid_t exec (const char *file) {
-	return process_exec(file);
+	int ret;
+	ret = process_exec(file);
+	return ret;
 }
 
 pid_t sys_fork (const char *thread_name, struct thread_and_if *tif) {

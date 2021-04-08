@@ -181,9 +181,11 @@ __do_fork (void *aux) {
 			break;
 		}
 	}
+	current->next_fd = parent->next_fd;
 	current->filecopy_success = succ;
 	/* fork() of child process should return 0 */
 	if_.R.rax = 0;
+	free(tif);
 	sema_up(&current->filecopy_sema);
 
 	if(!succ)
