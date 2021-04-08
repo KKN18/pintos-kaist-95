@@ -116,10 +116,11 @@ initd (void *f_name) {
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
 tid_t
-process_fork (const char *name, struct intr_frame *if_ UNUSED) {
+process_fork (const char *name, struct thread_and_if *tif UNUSED) {
 	/* Clone current thread to new thread.*/
+	tif->t = thread_current();
 	return thread_create (name,
-			PRI_DEFAULT, __do_fork, if_);
+			PRI_DEFAULT, __do_fork, tif);
 }
 
 #ifndef VM

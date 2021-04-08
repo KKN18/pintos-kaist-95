@@ -103,14 +103,14 @@ pid_t exec (const char *file)
 	return process_exec(file);
 }
 
-pid_t sys_fork (const char *thread_name, struct intr_frame *if_) {
+pid_t sys_fork (const char *thread_name, struct thread_and_if *tif) {
 	pid_t pid;
 	struct thread *child;
 
-	printf("HELLO!\n");
-	if((pid = process_fork(thread_name, if_)) == PID_ERROR)
+	if((pid = process_fork(thread_name, tif)) == PID_ERROR)
 		return PID_ERROR;
 
+	ASSERT(0);
 	child = thread_get_child(pid);
 	ASSERT(child);
 
