@@ -113,13 +113,15 @@ struct thread {
 	struct file *fd_table[100];
 	int next_fd;
 	struct file *prog_file;
-	// END
-    struct list_elem child_elem;
+
+    /* For fork and wait */
+	struct list_elem child_elem;
     struct list child_list;
     struct semaphore wait_sema;
     struct semaphore destroy_sema;
+	struct semaphore filecopy_sema;
+	bool filecopy_success;
 	int exit_status;
-
 	uint64_t *pml4;                     /* Page map level 4 */
 #endif
 #ifdef VM

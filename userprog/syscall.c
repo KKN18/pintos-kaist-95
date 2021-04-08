@@ -104,7 +104,21 @@ pid_t exec (const char *file)
 }
 
 pid_t sys_fork (const char *thread_name, struct intr_frame *if_) {
-	return process_fork(thread_name, if_);
+	pid_t pid;
+	struct thread *child;
+
+	printf("HELLO!\n");
+	if((pid = process_fork(thread_name, if_)) == PID_ERROR)
+		return PID_ERROR;
+
+	child = thread_get_child(pid);
+	ASSERT(child);
+
+	sema_down(&child->filecopy_sema);
+
+	if(!child->filecopy_success)
+		return PID_ERROR;
+	return pid;
 }
 
 bool create(const char *file, unsigned initial_size) {
@@ -240,7 +254,8 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			exit(f->R.rdi);
 			break;
 		case SYS_FORK:
-			// f->R.rax = fork(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi);
+			f->R.rax = sys_fork(f->R.rdi, f);
 			break;
 		case SYS_EXEC:
 			assert_valid_useraddr(f->R.rdi);
