@@ -182,14 +182,12 @@ __do_fork (void *aux) {
 		}
 	}
 	current->filecopy_success = succ;
-
+	/* fork() of child process should return 0 */
 	if_.R.rax = 0;
-
 	sema_up(&current->filecopy_sema);
 
 	if(!succ)
 		goto error;
-
 	/* END */
 	process_init ();
 
@@ -253,27 +251,20 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	/* Our Implementation */
-	/*
-	for(int i=0; i<1000000000; i++){
-
-	}
-	return -1;
-	*/
-	/* END */
-	// printf("parent id: %d child id: %d\n", thread_current()->tid, child_tid);
 	struct thread *child;
 	int exit_status;
 
 	if (!(child = thread_get_child(child_tid)))
 		return -1;
 
+	/* Wait for child to exit. Child calls sema_up at thread_exit() */
 	sema_down (&child->wait_sema);
 	list_remove (&child->child_elem);
 	exit_status = child->exit_status;
-	// printf("Exit status: %d\n", exit_status);
-	// printf("Thread name: %s\n", thread_current()->name);
-	sema_up (&child->destroy_sema);
+	/* Now delete process */
+	sema_up (&child->exit_sema);
 	return exit_status;
+	// END
 }
 
 /* Exit the process. This function is called by thread_exit (). */

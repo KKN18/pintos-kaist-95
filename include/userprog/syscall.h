@@ -9,9 +9,8 @@
 struct thread_and_if {
 	struct thread *t;
 	struct intr_frame *if_;
-    struct file *fd_table[100];
 };
-//
+// END
 
 struct lock file_access;
 

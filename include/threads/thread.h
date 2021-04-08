@@ -118,7 +118,7 @@ struct thread {
 	struct list_elem child_elem;
     struct list child_list;
     struct semaphore wait_sema;
-    struct semaphore destroy_sema;
+    struct semaphore exit_sema;
 	struct semaphore filecopy_sema;
 	bool filecopy_success;
 	int exit_status;

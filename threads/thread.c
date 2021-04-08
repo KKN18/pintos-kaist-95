@@ -335,26 +335,11 @@ thread_exit (void) {
 	process_exit ();
 
 	struct list_elem *child;
-
-	// 지금까지 이 프로세스가 wait하지 않은 모든 자식 프로세스가
-	// 이 프로세스와 상관없이 종료될 수 있도록 합니다.
-	for (child = list_begin (&thread_current ()->child_list);
-		child != list_end (&thread_current ()->child_list); )
-	{
-		struct thread *t = list_entry (child, struct thread, child_elem);
-		child = list_remove (child);
-		sema_up (&t->destroy_sema);
-	}
-
 	ASSERT (thread_current()->wait_on_lock == NULL);
 
-	// 부모 프로세스의 wait를 재개할 수 있도록 합니다.
-	sema_up (&thread_current ()->wait_sema);
+	sema_up (&thread_current()->wait_sema);
+	sema_down (&thread_current()->exit_sema);
 
-	// 부모 프로세스의 wait 완료 또는 부모 프로세스의 종료가
-	// 일어나기를 기다립니다.
-	sema_down (&thread_current ()->destroy_sema);
-	// debug_backtrace();
 #endif
 
 	/* Just set our status to dying and schedule another process.
@@ -529,14 +514,11 @@ init_thread (struct thread *t, const char *name, int priority) {
 	// END
 
 #ifdef USERPROG
-	// RYU Test
 	sema_init (&t->wait_sema, 0);
-	sema_init (&t->destroy_sema, 0);
+	sema_init (&t->exit_sema, 0);
 	sema_init (&t->filecopy_sema, 0);
-
 	list_init (&t->child_list);
 #endif
-
 	t->wake_tick = 0;
 	list_init(&t->donation_list);
 	t->base_priority = priority;
@@ -987,16 +969,13 @@ void update_all_mlfqs (void) {
 }
 /* END */
 
-// RYU Test
-struct thread *
-thread_get_child (tid_t tid)
+struct thread * thread_get_child (tid_t tid)
 {
 	struct list_elem *e;
-	for (e = list_begin (&thread_current ()->child_list);
-		e != list_end (&thread_current ()->child_list);
+	for (e = list_begin (&thread_current ()->child_list); e != list_end (&thread_current ()->child_list);
 		e = list_next (e))
 	{
-		struct thread *t = list_entry (e, struct thread, child_elem);
+		struct thread *t = list_entry(e, struct thread, child_elem);
 		if (t->tid == tid)
 			return t;
 	}
