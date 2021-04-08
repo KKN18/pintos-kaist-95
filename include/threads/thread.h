@@ -29,7 +29,7 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-#define FD_MAX 100
+#define FD_MAX 20
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -110,7 +110,7 @@ struct thread {
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	// Renamed Implementation
-	struct file *fd_table[100];
+	struct file *fd_table[20];
 	int next_fd;
 	struct file *prog_file;
 
@@ -122,6 +122,7 @@ struct thread {
 	struct semaphore filecopy_sema;
 	bool filecopy_success;
 	int exit_status;
+
 	uint64_t *pml4;                     /* Page map level 4 */
 #endif
 #ifdef VM

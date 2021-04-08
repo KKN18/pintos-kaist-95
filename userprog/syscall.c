@@ -57,8 +57,8 @@ syscall_init (void) {
 /* Our Implementation */
 /* Functions used in file related syscalls */
 static int allocate_fd (struct file *f) {
+	// Prev implementation of allocate_fd
 	int next_fd = thread_current()->next_fd++;
-	ASSERT(next_fd == (thread_current()->next_fd - 1))
 	if (strcmp(thread_current()->name, f) == 0)
 		file_deny_write(f);
 	thread_current()->fd_table[next_fd] = f;
@@ -230,6 +230,21 @@ void close (int fd)
   	delete_file (fd);
 	lock_release(&file_access);
 }
+
+int dup2 (int oldfd, int newfd)
+{
+	struct file *oldfile = search_file(oldfd);
+	struct file *newfile = search_file(newfd);
+	if (oldfd < 0 || oldfd >= thread_current()->next_fd)
+		return -1;
+	/* Is it valid? */
+	if (newfile != NULL)
+	{
+		close(newfile);
+	}
+	newfile = oldfile;
+	return newfd;
+}
 /* END */
 
 /* The main system call interface */
@@ -303,6 +318,16 @@ syscall_handler (struct intr_frame *f) {
 			assert_valid_useraddr(f->R.rdi);
 			close(f->R.rdi);
 			break;
+		case SYS_DUP2:
+			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rsi);
+			f->R.rax = dup2(f->R.rdi, f->R.rsi);
+			break;
+		/*
+		case default:
+			printf("Unknown syscall\n");
+			break;
+		*/
 	}
 	/* END */
 }

@@ -334,7 +334,17 @@ thread_exit (void) {
 #ifdef USERPROG
 	process_exit ();
 
+	/*
 	struct list_elem *child;
+	for (child = list_begin (&thread_current()->child_list);
+		child != list_end (&thread_current()->child_list); )
+	{
+		struct thread *t = list_entry (child, struct thread, child_elem);
+		child = list_remove(child);
+		sema_up (&t->exit_sema);
+	}
+	*/
+
 	ASSERT (thread_current()->wait_on_lock == NULL);
 
 	sema_up (&thread_current()->wait_sema);
