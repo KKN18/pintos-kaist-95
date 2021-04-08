@@ -354,6 +354,7 @@ thread_exit (void) {
 	// 부모 프로세스의 wait 완료 또는 부모 프로세스의 종료가
 	// 일어나기를 기다립니다.
 	sema_down (&thread_current ()->destroy_sema);
+	// debug_backtrace();
 #endif
 
 	/* Just set our status to dying and schedule another process.

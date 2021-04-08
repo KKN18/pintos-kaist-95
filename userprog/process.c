@@ -35,38 +35,6 @@ process_init (void) {
 	struct thread *current = thread_current ();
 }
 
-/* Our Implementation */
-// int process_add_file (struct file *f) {
-// 	if (f == NULL) return -1;
-// 	int fd = thread_current()->next_fd++;
-// 	thread_current()->fd_table[fd] = f;
-// 	return fd;
-// }
-
-// int process_add_file (struct file *f) {
-// 	if (f == NULL) return -1;
-// 	int fd = thread_current()->next_fd++;
-// 	list_push_back(&thread_current()->file_list, f->)
-// 	return fd;
-// }
-
-// struct file *process_get_file (int fd) {
-// 	struct thread *t = thread_current();
-// 	if (fd <= 1 || t->next_fd <= fd) return NULL;
-// 	return t->fd_table[fd];
-// }
-
-// void process_close_file (int fd)
-// {
-// 	struct thread *t = thread_current ();
-// 	if (fd <= 1 || t->next_fd <= fd)
-// 	return;
-// 	// file_close는 NULL을 무시합니다.
-// 	file_close (t->fd_table[fd]);
-// 	t->fd_table[fd] = NULL;
-// }
-/* END */
-
 /* Starts the first userland program, called "initd", loaded from FILE_NAME.
  * The new thread may be scheduled (and may even exit)
  * before process_create_initd() returns. Returns the initd's
@@ -214,6 +182,9 @@ __do_fork (void *aux) {
 		}
 	}
 	current->filecopy_success = succ;
+
+	if_.R.rax = 0;
+
 	sema_up(&current->filecopy_sema);
 
 	if(!succ)
@@ -289,7 +260,7 @@ process_wait (tid_t child_tid UNUSED) {
 	return -1;
 	*/
 	/* END */
-	
+	// printf("parent id: %d child id: %d\n", thread_current()->tid, child_tid);
 	struct thread *child;
 	int exit_status;
 
@@ -299,6 +270,8 @@ process_wait (tid_t child_tid UNUSED) {
 	sema_down (&child->wait_sema);
 	list_remove (&child->child_elem);
 	exit_status = child->exit_status;
+	// printf("Exit status: %d\n", exit_status);
+	// printf("Thread name: %s\n", thread_current()->name);
 	sema_up (&child->destroy_sema);
 	return exit_status;
 }
