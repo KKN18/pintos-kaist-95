@@ -204,7 +204,20 @@ __do_fork (void *aux) {
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
 	/* Our Implementation */
-	// if(flie_duplicate())
+	for(int i=0; i < parent->next_fd; i++) {
+		if(file_duplicate(parent->fd_table[i]) != NULL) 
+			current->fd_table[i] = file_duplicate(parent->fd_table[i]);
+		else
+		{
+			succ = false;
+			break;
+		}
+	}
+	current->filecopy_success = succ;
+	sema_up(&current->filecopy_sema);
+
+	if(!succ)
+		goto error;
 
 	/* END */
 	process_init ();

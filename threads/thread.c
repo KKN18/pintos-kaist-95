@@ -236,8 +236,9 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
-	// RYU Test
+	/* Our Implementation */
 	list_push_back (&thread_current ()->child_list, &t->child_elem);
+	// END
 
 	/* Add to run queue. */
 	thread_unblock (t);
@@ -531,7 +532,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	sema_init (&t->wait_sema, 0);
 	sema_init (&t->destroy_sema, 0);
 	sema_init (&t->filecopy_sema, 0);
-	
+
 	list_init (&t->child_list);
 #endif
 
@@ -995,10 +996,8 @@ thread_get_child (tid_t tid)
 		e = list_next (e))
 	{
 		struct thread *t = list_entry (e, struct thread, child_elem);
-		// 같은 것을 찾았으면 바로 반환합니다.
 		if (t->tid == tid)
-		return t;
+			return t;
 	}
-	// 찾지 못했습니다.
 	return NULL;
 }

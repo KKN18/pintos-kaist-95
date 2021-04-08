@@ -110,14 +110,15 @@ pid_t sys_fork (const char *thread_name, struct thread_and_if *tif) {
 	if((pid = process_fork(thread_name, tif)) == PID_ERROR)
 		return PID_ERROR;
 
-	ASSERT(0);
 	child = thread_get_child(pid);
 	ASSERT(child);
 
 	sema_down(&child->filecopy_sema);
 
+	/* File copy is ended from now on */
 	if(!child->filecopy_success)
 		return PID_ERROR;
+	
 	return pid;
 }
 
