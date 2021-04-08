@@ -35,38 +35,6 @@ process_init (void) {
 	struct thread *current = thread_current ();
 }
 
-/* Our Implementation */
-// int process_add_file (struct file *f) {
-// 	if (f == NULL) return -1;
-// 	int fd = thread_current()->next_fd++;
-// 	thread_current()->fd_table[fd] = f;
-// 	return fd;
-// }
-
-// int process_add_file (struct file *f) {
-// 	if (f == NULL) return -1;
-// 	int fd = thread_current()->next_fd++;
-// 	list_push_back(&thread_current()->file_list, f->)
-// 	return fd;
-// }
-
-// struct file *process_get_file (int fd) {
-// 	struct thread *t = thread_current();
-// 	if (fd <= 1 || t->next_fd <= fd) return NULL;
-// 	return t->fd_table[fd];
-// }
-
-// void process_close_file (int fd)
-// {
-// 	struct thread *t = thread_current ();
-// 	if (fd <= 1 || t->next_fd <= fd)
-// 	return;
-// 	// file_close는 NULL을 무시합니다.
-// 	file_close (t->fd_table[fd]);
-// 	t->fd_table[fd] = NULL;
-// }
-/* END */
-
 /* Starts the first userland program, called "initd", loaded from FILE_NAME.
  * The new thread may be scheduled (and may even exit)
  * before process_create_initd() returns. Returns the initd's
@@ -116,10 +84,11 @@ initd (void *f_name) {
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
 tid_t
-process_fork (const char *name, struct intr_frame *if_ UNUSED) {
+process_fork (const char *name, struct thread_and_if *tif UNUSED) {
 	/* Clone current thread to new thread.*/
+	tif->t = thread_current();
 	return thread_create (name,
-			PRI_DEFAULT, __do_fork, thread_current ());
+			PRI_DEFAULT, __do_fork, tif);
 }
 
 #ifndef VM
@@ -148,7 +117,6 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	/* 4. TODO: Duplicate parent's page to the new page and
 	 *    TODO: check whether parent's page is writable or not (set WRITABLE
 	 *    TODO: according to the result). */
-	
 	memcpy(newpage, parent_page, PGSIZE);
 	if(is_writable(pte))
 		writable = true;
@@ -173,10 +141,11 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 static void
 __do_fork (void *aux) {
 	struct intr_frame if_;
-	struct thread *parent = (struct thread *) aux;
+	struct thread_and_if *tif = (struct thread_and_if *) aux;
+	struct thread *parent = (struct thread *) tif->t;
 	struct thread *current = thread_current ();
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
-	struct intr_frame *parent_if;
+	struct intr_frame *parent_if = (struct intr_frame *) tif->if_;
 	bool succ = true;
 
 	/* 1. Read the cpu context to local stack. */
@@ -186,7 +155,7 @@ __do_fork (void *aux) {
 	current->pml4 = pml4_create();
 	if (current->pml4 == NULL)
 		goto error;
-
+	
 	process_activate (current);
 #ifdef VM
 	supplemental_page_table_init (&current->spt);
@@ -196,14 +165,29 @@ __do_fork (void *aux) {
 	if (!pml4_for_each (parent->pml4, duplicate_pte, parent))
 		goto error;
 #endif
-
 	/* TODO: Your code goes here.
 	 * TODO: Hint) To duplicate the file object, use `file_duplicate`
 	 * TODO:       in include/filesys/file.h. Note that parent should not return
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
 	/* Our Implementation */
-	// if(flie_duplicate())
+	for(int i=0; i < parent->next_fd; i++) {
+		if(parent->fd_table[i] == NULL) continue;
+		if(file_duplicate(parent->fd_table[i]) != NULL) 
+			current->fd_table[i] = file_duplicate(parent->fd_table[i]);
+		else
+		{
+			succ = false;
+			break;
+		}
+	}
+	current->filecopy_success = succ;
+	/* fork() of child process should return 0 */
+	if_.R.rax = 0;
+	sema_up(&current->filecopy_sema);
+
+	if(!succ)
+		goto error;
 	/* END */
 	process_init ();
 
@@ -267,32 +251,20 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	/* Our Implementation */
-	/*
-	for(int i=0; i<1000000000; i++){
-
-	}
-	return -1;
-	*/
-	/* END */
-	
 	struct thread *child;
 	int exit_status;
 
-	// tid가 잘못되었거나 wait를 두 번 이상 반복하는 경우
-	// 리스트에서 찾을 수 없고 결과적으로 -1을 반환합니다.
 	if (!(child = thread_get_child(child_tid)))
 		return -1;
 
-	// 자식 프로세스가 종료되기를 기다립니다.
+	/* Wait for child to exit. Child calls sema_up at thread_exit() */
 	sema_down (&child->wait_sema);
-	// 자식 프로세스를 이 프로세스의 자식 리스트에서 제거합니다.
 	list_remove (&child->child_elem);
-	// 자식 프로세스의 종료 상태를 얻습니다.
 	exit_status = child->exit_status;
-	// 자식 프로세스를 완전히 제거해도 좋습니다.
-	sema_up (&child->destroy_sema);
-
+	/* Now delete process */
+	sema_up (&child->exit_sema);
 	return exit_status;
+	// END
 }
 
 /* Exit the process. This function is called by thread_exit (). */

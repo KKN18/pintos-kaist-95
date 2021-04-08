@@ -16,7 +16,6 @@ void syscall_handler (struct intr_frame *);
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/synch.h"
-struct lock file_access;
 /* END */
 
 /* System call.
@@ -55,42 +54,41 @@ syscall_init (void) {
 			FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
 
-
-
-// Renamed Implementation
-int allocate_fd (struct file *f) {
+/* Our Implementation */
+/* Functions used in file related syscalls */
+static int allocate_fd (struct file *f) {
 	int next_fd = thread_current()->next_fd++;
 	ASSERT(next_fd == (thread_current()->next_fd - 1))
 	if (strcmp(thread_current()->name, f) == 0)
 		file_deny_write(f);
 	thread_current()->fd_table[next_fd] = f;
-	
 	return next_fd;
 }
 
-
-
-struct file *search_file (int fd) {
+static struct file *search_file (int fd) {
 	return thread_current()->fd_table[fd];
 }
 
-void delete_file (int fd) {
+static void delete_file (int fd) {
 	struct file* file = search_file(fd);
 	if (file == NULL) return;
 	file_close(file);
 	thread_current()->fd_table[fd] = NULL;
 }
+/* End for functions used in file related syscalls */
 
 void assert_valid_useraddr(const void *vaddr) {
    if (!is_user_vaddr(vaddr))  exit(-1);
 }
 
+/* Start of syscall functions used in syscall handler */
 void halt (void) {
 	power_off();
 }
 
 void exit(int status) {
 	printf("%s: exit(%d)\n", thread_name(), status);
+	thread_current()->exit_status = status;
 	thread_exit();
 }
 
@@ -98,13 +96,25 @@ int wait(pid_t pid) {
 	return process_wait(pid);
 }
 
-pid_t exec (const char *file)
-{
+pid_t exec (const char *file) {
 	return process_exec(file);
 }
 
-pid_t sys_fork (const char *thread_name, struct intr_frame *if_) {
-	return process_fork(thread_name, if_);
+pid_t sys_fork (const char *thread_name, struct thread_and_if *tif) {
+	pid_t pid;
+	struct thread *child;
+
+	if((pid = process_fork(thread_name, tif)) == PID_ERROR)
+		return PID_ERROR;
+	
+	child = thread_get_child(pid);
+	sema_down(&child->filecopy_sema);
+
+	/* File copy is ended from now on */
+	if(!child->filecopy_success)
+		return PID_ERROR;
+	
+	return pid;
 }
 
 bool create(const char *file, unsigned initial_size) {
@@ -218,19 +228,13 @@ void close (int fd)
   	delete_file (fd);
 	lock_release(&file_access);
 }
-
 /* END */
-
-
 
 /* The main system call interface */
 void
-syscall_handler (struct intr_frame *f UNUSED) {
+syscall_handler (struct intr_frame *f) {
 	// TODO: Your implementation goes here.
 	/* Our Implementation */
-	// printf ("syscall num : %d\n", f->R.rax);
-	// printf ("system call!\n");
-
 	switch (f->R.rax) {
 		case SYS_HALT:
 			halt();
@@ -240,7 +244,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			exit(f->R.rdi);
 			break;
 		case SYS_FORK:
-			// f->R.rax = fork(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi);
+			/* For sys_fork() only */
+			struct thread_and_if *tif = malloc(sizeof(struct thread_and_if));
+			tif->t = thread_current();
+			tif->if_ = malloc(sizeof(struct intr_frame));
+			memcpy(tif->if_, f, sizeof(struct intr_frame));
+			f->R.rax = sys_fork(f->R.rdi, tif);
 			break;
 		case SYS_EXEC:
 			assert_valid_useraddr(f->R.rdi);
@@ -293,8 +303,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 	}
 	/* END */
-
-	
 }
 
 
