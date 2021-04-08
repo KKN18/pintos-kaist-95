@@ -237,12 +237,7 @@ process_exec (void *f_name) {
 	// printf("file : %s\n", file_name);
 	success = load (file_copy, &_if);
 	struct thread *t = thread_current();
-#ifdef USERPROG
-	t->load_succeeded = success;
-
-	// 부모 프로세스에서 exec 함수 수행을 재개해도 좋습니다.
-  	sema_up (&t->load_sema);
-#endif
+	
 	/* If load failed, quit. */
 	
 	if (!success)

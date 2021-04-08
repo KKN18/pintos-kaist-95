@@ -531,8 +531,6 @@ init_thread (struct thread *t, const char *name, int priority) {
 	// 세마포어 초기화
 	sema_init (&t->wait_sema, 0);
 	sema_init (&t->destroy_sema, 0);
-	sema_init (&t->load_sema, 0);
-
 	// 자식 스레드 리스트 초기화
 	list_init (&t->child_list);
 #endif
