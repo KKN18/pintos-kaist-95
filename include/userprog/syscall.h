@@ -4,7 +4,13 @@
 #include "lib/user/syscall.h"
 #include "lib/kernel/list.h"
 
-
+/* Our Implementation */
+// For passing if_ to sys_fork
+struct thread_and_if {
+	struct thread *t;
+	struct intr_frame *if_;
+};
+//
 
 struct lock file_access;
 

@@ -118,12 +118,8 @@ initd (void *f_name) {
 tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/
-	struct thread_and_if *tif = malloc(sizeof(struct thread_and_if));
-	tif->t = thread_current();
-	tif->if_ = malloc(sizeof(struct intr_frame));
-	memcpy(tif->if_, if_, sizeof(if_));
 	return thread_create (name,
-			PRI_DEFAULT, __do_fork, tif);
+			PRI_DEFAULT, __do_fork, if_);
 }
 
 #ifndef VM
@@ -208,6 +204,7 @@ __do_fork (void *aux) {
 	 * TODO:       the resources of parent.*/
 	/* Our Implementation */
 	// if(flie_duplicate())
+
 	/* END */
 	process_init ();
 

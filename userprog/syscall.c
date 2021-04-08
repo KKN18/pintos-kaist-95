@@ -239,11 +239,16 @@ void close (int fd)
 
 /* The main system call interface */
 void
-syscall_handler (struct intr_frame *f UNUSED) {
+syscall_handler (struct intr_frame *f) {
 	// TODO: Your implementation goes here.
 	/* Our Implementation */
 	// printf ("syscall num : %d\n", f->R.rax);
 	// printf ("system call!\n");
+	
+	struct thread_and_if *tif = malloc(sizeof(struct thread_and_if));
+	tif->t = thread_current();
+	tif->if_ = malloc(sizeof(struct intr_frame));
+	memcpy(tif->if_, f, sizeof(struct intr_frame));
 
 	switch (f->R.rax) {
 		case SYS_HALT:
@@ -255,7 +260,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		case SYS_FORK:
 			assert_valid_useraddr(f->R.rdi);
-			f->R.rax = sys_fork(f->R.rdi, f);
+			f->R.rax = sys_fork(f->R.rdi, tif);
 			break;
 		case SYS_EXEC:
 			assert_valid_useraddr(f->R.rdi);

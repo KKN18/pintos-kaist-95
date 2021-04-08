@@ -14,23 +14,6 @@ Putting 'fork-once' into the file system...
 Executing 'fork-once':
 (fork-once) begin
 HELLO!
-Interrupt 0x0d (#GP General Protection Exception) at rip=8004207a3b
- cr2=0000000000000000 error=               0
-rax 0000000000000000 rbx 0000000000000000 rcx 0000000000000000 rdx 0000000000000000
-rsp 0000008004249f87 rbp 0000000000000000 rsi 0000000000000000 rdi 0000000000000000
-rip 0000008004207a3b r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
-r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000008004248118
-r15 0000000000000000 rflags 00000206
-es: 0000 ds: 0000 cs: 0008 ss: 0010
-Kernel PANIC at ../../userprog/exception.c:97 in kill(): Kernel bug - unexpected interrupt in kernel
-Call stack: 0x800421880c 0x800421d5a7 0x800420991e.
-The `backtrace' program can make call stacks useful.
-Read "Backtraces" in the "Debugging Tools" chapter
-of the Pintos documentation for more information.
-Timer: 72 ticks
-Thread: 31 idle ticks, 37 kernel ticks, 4 user ticks
-hd0:0: 0 reads, 0 writes
-hd0:1: 80 reads, 234 writes
-hd1:0: 103 reads, 0 writes
-Console: 1605 characters output
-Key
+(fork-once) Parent: child exit status is -1
+(fork-once) end
+child: exit(0)
