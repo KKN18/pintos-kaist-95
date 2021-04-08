@@ -187,7 +187,7 @@ __do_fork (void *aux) {
 	current->pml4 = pml4_create();
 	if (current->pml4 == NULL)
 		goto error;
-
+	
 	process_activate (current);
 #ifdef VM
 	supplemental_page_table_init (&current->spt);
@@ -197,7 +197,6 @@ __do_fork (void *aux) {
 	if (!pml4_for_each (parent->pml4, duplicate_pte, parent))
 		goto error;
 #endif
-
 	/* TODO: Your code goes here.
 	 * TODO: Hint) To duplicate the file object, use `file_duplicate`
 	 * TODO:       in include/filesys/file.h. Note that parent should not return
@@ -205,6 +204,7 @@ __do_fork (void *aux) {
 	 * TODO:       the resources of parent.*/
 	/* Our Implementation */
 	for(int i=0; i < parent->next_fd; i++) {
+		if(parent->fd_table[i] == NULL) continue;
 		if(file_duplicate(parent->fd_table[i]) != NULL) 
 			current->fd_table[i] = file_duplicate(parent->fd_table[i]);
 		else
@@ -300,7 +300,6 @@ process_wait (tid_t child_tid UNUSED) {
 	list_remove (&child->child_elem);
 	exit_status = child->exit_status;
 	sema_up (&child->destroy_sema);
-
 	return exit_status;
 }
 

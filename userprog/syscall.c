@@ -246,11 +246,7 @@ syscall_handler (struct intr_frame *f) {
 	// printf ("syscall num : %d\n", f->R.rax);
 	// printf ("system call!\n");
 	
-	struct thread_and_if *tif = malloc(sizeof(struct thread_and_if));
-	tif->t = thread_current();
-	tif->if_ = malloc(sizeof(struct intr_frame));
-	memcpy(tif->if_, f, sizeof(struct intr_frame));
-
+	
 	switch (f->R.rax) {
 		case SYS_HALT:
 			halt();
@@ -261,6 +257,20 @@ syscall_handler (struct intr_frame *f) {
 			break;
 		case SYS_FORK:
 			assert_valid_useraddr(f->R.rdi);
+			/* For sys_fork() only */
+			struct thread_and_if *tif = malloc(sizeof(struct thread_and_if));
+			tif->t = thread_current();
+			tif->if_ = malloc(sizeof(struct intr_frame));
+			memcpy(tif->if_, f, sizeof(struct intr_frame));
+			/*
+			memset(tif->fd_table, NULL, FD_MAX * sizeof(struct file *));
+			// ASSERT(0);
+			for(int i=2; i < thread_current()->next_fd; i++) {
+				if(thread_current()->fd_table[i] == NULL) continue;
+				tif->fd_table[i] = file_duplicate(thread_current()->fd_table[i]);
+			}
+			ASSERT(0);
+			*/
 			f->R.rax = sys_fork(f->R.rdi, tif);
 			break;
 		case SYS_EXEC:
