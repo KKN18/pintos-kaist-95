@@ -54,13 +54,14 @@ process_create_initd (const char *file_name) {
 
 	/* Our Implementation */
 	char *filename_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
+	char **free_ptr = &filename_copy;
 	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
 	char *argptr;
 	strtok_r(filename_copy, " ", &argptr);
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (filename_copy, PRI_DEFAULT, initd, fn_copy);
-	free(filename_copy);
+	free(*free_ptr);
 	/* END */
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
@@ -232,7 +233,7 @@ process_exec (void *f_name) {
 	/* If load failed, quit. */
 	if (!success)
 	{
-		palloc_free_page (file_name);
+		palloc_free_page (f_name);
 		return -1;
 	}
 	free(file_copy);
@@ -396,6 +397,7 @@ int args_count(char *file_name) {
 	int argc;
 
 	filename_copy = calloc(strlen(file_name)+1, sizeof(char));
+	char **free_ptr = &filename_copy;
 	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
 	token = strtok_r(filename_copy, " ", &last);
 	
@@ -404,7 +406,7 @@ int args_count(char *file_name) {
 		argc++;
 		token = strtok_r(NULL, " ", &last);
 	}
-	free(filename_copy);
+	free(*free_ptr);
 	return argc; 
 }
 
@@ -420,6 +422,7 @@ void pass_arguments(char *file_name, struct intr_frame *if_){
 	char **argv = (char **)malloc(sizeof(char *) * argc);
 	// Temporarily store file_name on filename_copy
 	char *filename_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
+	char **free_ptr = &filename_copy;
 	// char filename_copy[256];
 
 	// store argv
@@ -469,7 +472,7 @@ void pass_arguments(char *file_name, struct intr_frame *if_){
 	// For debugging
 	// hex_dump(*rsp, *rsp, 64, 1);
 	/* END */
-	free(filename_copy);
+	free(*free_ptr);
 	free(argv);
 }
 /* END */
@@ -494,8 +497,8 @@ load (const char *file_name, struct intr_frame *if_) {
 	
 	/* Our Implementation */
 	// char filename_copy[128];
-	char *filename_copy = calloc(strlen(file_name)+1, sizeof(char));
-	
+	char *filename_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
+	char **free_ptr = &filename_copy;
 	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
 	char *argptr;
 	strtok_r(filename_copy, " ", &argptr);
@@ -524,7 +527,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	file_deny_write(t->prog_file);
 	lock_release(&file_access);
 	
-	free(filename_copy);
+	free(*free_ptr);
 	/* END */
 
 	/* Read and verify executable header. */
