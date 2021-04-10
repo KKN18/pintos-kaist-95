@@ -318,11 +318,13 @@ syscall_handler (struct intr_frame *f) {
 			assert_valid_useraddr(f->R.rdi);
 			close(f->R.rdi);
 			break;
+		/*
 		case SYS_DUP2:
 			assert_valid_useraddr(f->R.rdi);
 			assert_valid_useraddr(f->R.rsi);
 			f->R.rax = dup2(f->R.rdi, f->R.rsi);
 			break;
+		*/
 		/*
 		case default:
 			printf("Unknown syscall\n");

@@ -113,6 +113,10 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
 	newpage = palloc_get_page(PAL_USER);
+	if(newpage == NULL) {
+		palloc_free_page(newpage);
+		return false;
+	}
 
 	/* 4. TODO: Duplicate parent's page to the new page and
 	 *    TODO: check whether parent's page is writable or not (set WRITABLE
@@ -217,22 +221,21 @@ process_exec (void *f_name) {
 	_if.eflags = FLAG_IF | FLAG_MBS;
 	/* We first kill the current context */
 	/* Our Implementation */
-	char file_copy[256];
+	// char file_copy[256];
+	char *file_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
 	strlcpy(file_copy, file_name, strlen(file_name) + 1);
 	process_cleanup ();
 	/* And then load the binary */
 	// printf("file : %s\n", file_name);
 	success = load (file_copy, &_if);
 	struct thread *t = thread_current();
-	
 	/* If load failed, quit. */
-	
 	if (!success)
 	{
 		palloc_free_page (file_name);
 		return -1;
 	}
-
+	free(file_copy);
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -284,6 +287,7 @@ process_exit (void) {
 	curr->next_fd = 2;
 	// ASSERT(file_deny_cnt(curr->prog_file) != 0);
 	file_close(curr->prog_file);
+	palloc_free_page(curr->fd_table);
 	process_cleanup ();
 }
 
@@ -468,7 +472,6 @@ void pass_arguments(char *file_name, struct intr_frame *if_){
 	free(filename_copy);
 	free(argv);
 }
-
 /* END */
 
 /* Loads an ELF executable from FILE_NAME into the current thread.
@@ -490,8 +493,8 @@ load (const char *file_name, struct intr_frame *if_) {
 	process_activate (thread_current ());
 	
 	/* Our Implementation */
-	char filename_copy[128];
-	// char *filename_copy = calloc(strlen(file_name)+1, sizeof(char));
+	// char filename_copy[128];
+	char *filename_copy = calloc(strlen(file_name)+1, sizeof(char));
 	
 	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
 	char *argptr;
@@ -520,7 +523,10 @@ load (const char *file_name, struct intr_frame *if_) {
 	t->prog_file = file;
 	file_deny_write(t->prog_file);
 	lock_release(&file_access);
+	
+	free(filename_copy);
 	/* END */
+
 	/* Read and verify executable header. */
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
 			|| memcmp (ehdr.e_ident, "\177ELF\2\1\1", 7)

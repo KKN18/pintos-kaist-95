@@ -238,6 +238,15 @@ thread_create (const char *name, int priority,
 
 	/* Our Implementation */
 	list_push_back (&thread_current ()->child_list, &t->child_elem);
+	// t->fd_table = (struct file **)malloc(sizeof(struct file *) * FD_MAX);
+	t->fd_table = palloc_get_multiple(PAL_ZERO, 2);
+	if(t->fd_table == NULL) 
+	{	
+		palloc_free_page(t->fd_table);
+		// free(t->fd_table);
+		return TID_ERROR;
+	}
+	memset(t->fd_table, NULL, FD_MAX * sizeof(struct file *));
 	// END
 
 	/* Add to run queue. */
@@ -334,7 +343,6 @@ thread_exit (void) {
 #ifdef USERPROG
 	process_exit ();
 
-	/*
 	struct list_elem *child;
 	for (child = list_begin (&thread_current()->child_list);
 		child != list_end (&thread_current()->child_list); )
@@ -343,7 +351,6 @@ thread_exit (void) {
 		child = list_remove(child);
 		sema_up (&t->exit_sema);
 	}
-	*/
 
 	ASSERT (thread_current()->wait_on_lock == NULL);
 
@@ -519,7 +526,6 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->magic = THREAD_MAGIC;
 	// Renamed Implementation
 	t->prog_file = NULL;
-	memset(t->fd_table, NULL, FD_MAX * sizeof(struct file *));
 	t->next_fd = 2;
 	// END
 
