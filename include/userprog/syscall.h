@@ -12,6 +12,12 @@ struct thread_and_if {
 };
 // END
 
+struct file_info {
+    struct file *file;          // target file
+    int fd;                     // located file descriptor
+    struct list_elem file_elem; // file_list element
+};
+
 struct lock file_access;
 
 void syscall_init (void);

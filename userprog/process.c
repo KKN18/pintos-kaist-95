@@ -54,17 +54,25 @@ process_create_initd (const char *file_name) {
 
 	/* Our Implementation */
 	char *filename_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
-	char **free_ptr = &filename_copy;
+	if (filename_copy == NULL)
+	{
+		palloc_free_page (fn_copy);
+		return TID_ERROR;
+	}
+	char *free_ptr = filename_copy;
 	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
 	char *argptr;
 	strtok_r(filename_copy, " ", &argptr);
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (filename_copy, PRI_DEFAULT, initd, fn_copy);
-	free(*free_ptr);
+	sema_down(&thread_current()->load_sema);
+	free(free_ptr);
 	/* END */
 	if (tid == TID_ERROR)
+	{
 		palloc_free_page (fn_copy);
+	}
 	return tid;
 }
 
@@ -176,17 +184,29 @@ __do_fork (void *aux) {
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
 	/* Our Implementation */
-	for(int i=0; i < parent->next_fd; i++) {
-		if(parent->fd_table[i] == NULL) continue;
-		if(file_duplicate(parent->fd_table[i]) != NULL) 
-			current->fd_table[i] = file_duplicate(parent->fd_table[i]);
+	struct list_elem *p = list_begin(&parent->file_list);
+	for (p; p!=list_end(&parent->file_list); p=list_next(p))
+	{
+		struct file_info *pfi = list_entry(p, struct file_info, file_elem);
+		if (file_duplicate(pfi->file)!=NULL)
+		{
+			struct file_info *fi = malloc(sizeof(struct file_info));
+			if (fi == NULL) 
+			{
+				succ = false;
+				break;
+			}
+			fi->file = file_duplicate(pfi->file);
+			fi->fd = pfi->fd;
+			list_push_back(&current->file_list, &fi->file_elem);
+		}
 		else
 		{
 			succ = false;
 			break;
 		}
 	}
-	current->next_fd = parent->next_fd;
+	current->fd = parent->fd;
 	current->filecopy_success = succ;
 	/* fork() of child process should return 0 */
 	if_.R.rax = 0;
@@ -224,6 +244,10 @@ process_exec (void *f_name) {
 	/* Our Implementation */
 	// char file_copy[256];
 	char *file_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
+	if (file_copy == NULL)
+	{
+		return -1;
+	}
 	strlcpy(file_copy, file_name, strlen(file_name) + 1);
 	process_cleanup ();
 	/* And then load the binary */
@@ -231,9 +255,9 @@ process_exec (void *f_name) {
 	success = load (file_copy, &_if);
 	struct thread *t = thread_current();
 	/* If load failed, quit. */
+	sema_up(&thread_current()->parent->load_sema);
 	if (!success)
 	{
-		palloc_free_page (f_name);
 		return -1;
 	}
 	free(file_copy);
@@ -282,13 +306,17 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	int fd = curr->next_fd - 1;
-	for (fd; fd>=2; fd--) 
-		file_close(curr->fd_table[fd]);
-	curr->next_fd = 2;
+	struct list_elem *p = list_begin(&curr->file_list);
+	for (p; p!=list_end(&curr->file_list);)
+	{
+		struct file_info *fi = list_entry(p, struct file_info, file_elem);
+		file_close(fi->file);
+		p = list_remove(&fi->file_elem);
+		free(fi);
+	}
+	curr->fd = 2;
 	// ASSERT(file_deny_cnt(curr->prog_file) != 0);
 	file_close(curr->prog_file);
-	palloc_free_page(curr->fd_table);
 	process_cleanup ();
 }
 
@@ -397,7 +425,9 @@ int args_count(char *file_name) {
 	int argc;
 
 	filename_copy = calloc(strlen(file_name)+1, sizeof(char));
-	char **free_ptr = &filename_copy;
+	if (filename_copy == NULL)
+		return -1;
+	char *free_ptr = filename_copy;
 	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
 	token = strtok_r(filename_copy, " ", &last);
 	
@@ -406,11 +436,11 @@ int args_count(char *file_name) {
 		argc++;
 		token = strtok_r(NULL, " ", &last);
 	}
-	free(*free_ptr);
+	free(free_ptr);
 	return argc; 
 }
 
-void pass_arguments(char *file_name, struct intr_frame *if_){
+bool pass_arguments(char *file_name, struct intr_frame *if_){
 	// Used for strtok_r
 	char *token;
 	char *last;
@@ -419,10 +449,19 @@ void pass_arguments(char *file_name, struct intr_frame *if_){
 
 	// Our Implementation
 	int argc = args_count(file_name);
+	if (argc == -1)
+		return false;
 	char **argv = (char **)malloc(sizeof(char *) * argc);
+	if (argv == NULL)
+		return false;
 	// Temporarily store file_name on filename_copy
 	char *filename_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
-	char **free_ptr = &filename_copy;
+	if (filename_copy == NULL)
+	{
+		free(argv);
+		return false;
+	}
+	char *free_ptr = filename_copy;
 	// char filename_copy[256];
 
 	// store argv
@@ -472,8 +511,9 @@ void pass_arguments(char *file_name, struct intr_frame *if_){
 	// For debugging
 	// hex_dump(*rsp, *rsp, 64, 1);
 	/* END */
-	free(*free_ptr);
+	free(free_ptr);
 	free(argv);
+	return true;
 }
 /* END */
 
@@ -498,7 +538,13 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* Our Implementation */
 	// char filename_copy[128];
 	char *filename_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
-	char **free_ptr = &filename_copy;
+	if (filename_copy == NULL)
+	{
+		success = false;
+		goto done;
+	}
+
+	char *free_ptr = filename_copy;
 	strlcpy(filename_copy, file_name, strlen(file_name) + 1);
 	char *argptr;
 	strtok_r(filename_copy, " ", &argptr);
@@ -520,14 +566,14 @@ load (const char *file_name, struct intr_frame *if_) {
 	if (file == NULL) {
 		lock_release(&file_access);
 		printf ("load: %s: open failed\n", filename_copy);
-		success = -1;
+		success = false;
 		goto done;
 	}
 	t->prog_file = file;
 	file_deny_write(t->prog_file);
 	lock_release(&file_access);
 	
-	free(*free_ptr);
+	free(free_ptr);
 	/* END */
 
 	/* Read and verify executable header. */
@@ -605,9 +651,8 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
 	/* Our Implemantation */
-	pass_arguments((char *)file_name, if_);
+	success = pass_arguments((char *)file_name, if_);
 	/* END */
-	success = true;
 
 done:
 	/* We arrive here whether the load is successful or not. */

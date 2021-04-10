@@ -56,24 +56,44 @@ syscall_init (void) {
 
 /* Our Implementation */
 /* Functions used in file related syscalls */
-static int allocate_fd (struct file *f) {
-	// Prev implementation of allocate_fd
-	int next_fd = thread_current()->next_fd++;
-	if (strcmp(thread_current()->name, f) == 0)
-		file_deny_write(f);
-	thread_current()->fd_table[next_fd] = f;
-	return next_fd;
+int allocate_fd (struct file *f) {
+	struct file_info *fi = malloc(sizeof(struct file_info));
+	if (fi == NULL) return -1;
+	struct thread *curr = thread_current();
+	int empty_fd = curr->fd;
+	curr->fd += 1;
+
+	fi->file = f;
+	fi->fd = empty_fd;
+	list_push_back(&curr->file_list, &fi->file_elem);
+	
+	return empty_fd;
 }
 
-static struct file *search_file (int fd) {
-	return thread_current()->fd_table[fd];
+struct file_info *search_file_info (int fd) {
+	struct thread *curr = thread_current();
+	struct list_elem *p = list_begin(&curr->file_list);
+
+	for (p; p != list_end(&curr->file_list); p = list_next(p))
+	{
+		struct file_info *fi = list_entry(p, struct file_info, file_elem);
+		if (fi->fd == fd) return fi;
+	}
+	return NULL;
 }
 
-static void delete_file (int fd) {
-	struct file* file = search_file(fd);
-	if (file == NULL) return;
-	file_close(file);
-	thread_current()->fd_table[fd] = NULL;
+struct file *search_file (int fd) {
+	struct file_info *fi = search_file_info(fd);
+	if (!fi) return NULL;
+	return fi->file;
+}
+
+void delete_file (int fd) {
+	struct file_info *fi = search_file_info(fd);
+	if (!fi) return;
+	file_close(fi->file);
+	list_remove(&fi->file_elem);
+	free(fi);
 }
 /* End for functions used in file related syscalls */
 
@@ -141,6 +161,11 @@ int open(const char *file) {
 	}
 	int fd = allocate_fd(f);
 	lock_release(&file_access);
+	if (fd == -1)
+	{
+		file_close(f);
+		exit(-1);
+	}
 	return fd;
 }
 
@@ -230,14 +255,13 @@ void close (int fd)
   	delete_file (fd);
 	lock_release(&file_access);
 }
-
+/*
 int dup2 (int oldfd, int newfd)
 {
 	struct file *oldfile = search_file(oldfd);
 	struct file *newfile = search_file(newfd);
 	if (oldfd < 0 || oldfd >= thread_current()->next_fd)
 		return -1;
-	/* Is it valid? */
 	if (newfile != NULL)
 	{
 		close(newfile);
@@ -245,6 +269,8 @@ int dup2 (int oldfd, int newfd)
 	newfile = oldfile;
 	return newfd;
 }
+*/
+
 /* END */
 
 /* The main system call interface */
@@ -264,8 +290,20 @@ syscall_handler (struct intr_frame *f) {
 			assert_valid_useraddr(f->R.rdi);
 			/* For sys_fork() only */
 			struct thread_and_if *tif = malloc(sizeof(struct thread_and_if));
+			if (tif == NULL) 
+			{
+				f->R.rax = TID_ERROR;
+				break;
+			}
 			tif->t = thread_current();
 			tif->if_ = malloc(sizeof(struct intr_frame));
+			if (tif->if_ == NULL)
+			{
+				free(tif->if_);
+				free(tif);
+				f->R.rax = TID_ERROR;
+				break;
+			}
 			memcpy(tif->if_, f, sizeof(struct intr_frame));
 			f->R.rax = sys_fork(f->R.rdi, tif);
 			break;

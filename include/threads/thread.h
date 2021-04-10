@@ -28,8 +28,7 @@ typedef int tid_t;
 /* Thread priorities. */
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
-#define PRI_MAX 63                      /* Highest priority. */
-#define FD_MAX 127					
+#define PRI_MAX 63                      /* Highest priority. */	
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -110,9 +109,12 @@ struct thread {
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	// Renamed Implementation
-	struct file **fd_table;
-	int next_fd;
+	struct thread *parent;
+	struct semaphore load_sema;
+	int fd;
+	struct list file_list;
 	struct file *prog_file;
+
 
     /* For fork and wait */
 	struct list_elem child_elem;
