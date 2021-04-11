@@ -187,23 +187,24 @@ __do_fork (void *aux) {
 	struct list_elem *p = list_begin(&parent->file_list);
 	for (p; p!=list_end(&parent->file_list); p=list_next(p))
 	{
+		struct file *f;
 		struct file_info *pfi = list_entry(p, struct file_info, file_elem);
-		if (file_duplicate(pfi->file)!=NULL)
+		if ((f =file_duplicate(pfi->file))!=NULL)
 		{
 			struct file_info *fi = malloc(sizeof(struct file_info));
 			if (fi == NULL) 
 			{
 				succ = false;
-				break;
+				goto error;
 			}
-			fi->file = file_duplicate(pfi->file);
+			fi->file = f;
 			fi->fd = pfi->fd;
 			list_push_back(&current->file_list, &fi->file_elem);
 		}
 		else
 		{
 			succ = false;
-			break;
+			goto error;
 		}
 	}
 	current->fd = parent->fd;
@@ -214,8 +215,6 @@ __do_fork (void *aux) {
 	free(tif);
 	sema_up(&current->filecopy_sema);
 
-	if(!succ)
-		goto error;
 	/* END */
 	process_init ();
 
@@ -223,6 +222,10 @@ __do_fork (void *aux) {
 	if (succ)
 		do_iret (&if_);
 error:
+	current->filecopy_success = succ;
+	free(tif->if_);
+	free(tif);
+	sema_up(&current->filecopy_sema);
 	thread_exit ();
 }
 
@@ -246,9 +249,11 @@ process_exec (void *f_name) {
 	char *file_copy = (char *)calloc(strlen(file_name)+1, sizeof(char));
 	if (file_copy == NULL)
 	{
+		process_cleanup ();
 		return -1;
 	}
 	strlcpy(file_copy, file_name, strlen(file_name) + 1);
+	// palloc_free_page(file_name);
 	process_cleanup ();
 	/* And then load the binary */
 	// printf("file : %s\n", file_name);
@@ -258,6 +263,7 @@ process_exec (void *f_name) {
 	sema_up(&thread_current()->parent->load_sema);
 	if (!success)
 	{
+		free(file_copy);
 		return -1;
 	}
 	free(file_copy);
@@ -567,6 +573,7 @@ load (const char *file_name, struct intr_frame *if_) {
 		lock_release(&file_access);
 		printf ("load: %s: open failed\n", filename_copy);
 		success = false;
+		free(free_ptr);
 		goto done;
 	}
 	t->prog_file = file;

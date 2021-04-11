@@ -23,8 +23,8 @@ Executing 'sm-full':
 (sm-full) end
 sm-full: exit(0)
 Execution of 'sm-full' complete.
-Timer: 67 ticks
-Thread: 35 idle ticks, 30 kernel ticks, 2 user ticks
+Timer: 75 ticks
+Thread: 36 idle ticks, 33 kernel ticks, 6 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 124 reads, 278 writes
 hd1:0: 107 reads, 0 writes
