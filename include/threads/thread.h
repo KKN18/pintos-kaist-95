@@ -190,7 +190,5 @@ void thread_preempt (void);
 void thread_donate (struct thread *, struct thread *, int);
 void update_donate_priority (struct thread *);
 void thread_remove_lock (struct lock *);
-
-// RYU Test
 struct thread *thread_get_child (tid_t tid);
 #endif /* threads/thread.h */

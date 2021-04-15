@@ -291,7 +291,9 @@ process_wait (tid_t child_tid UNUSED) {
 	struct thread *child;
 	int exit_status;
 
-	if (!(child = thread_get_child(child_tid)))
+	child = thread_get_child(child_tid);
+	
+	if(child == NULL)
 		return -1;
 
 	/* Wait for child to exit. Child calls sema_up at thread_exit() */

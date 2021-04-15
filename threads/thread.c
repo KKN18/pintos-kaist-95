@@ -334,18 +334,6 @@ thread_exit (void) {
 
 #ifdef USERPROG
 	process_exit ();
-
-	struct list_elem *child;
-	for (child = list_begin (&thread_current()->child_list);
-		child != list_end (&thread_current()->child_list); )
-	{
-		struct thread *t = list_entry (child, struct thread, child_elem);
-		child = list_remove(child);
-		sema_up (&t->exit_sema);
-	}
-
-	ASSERT (thread_current()->wait_on_lock == NULL);
-
 	sema_up (&thread_current()->wait_sema);
 	sema_down (&thread_current()->exit_sema);
 
@@ -982,11 +970,13 @@ void update_all_mlfqs (void) {
 }
 /* END */
 
-struct thread * thread_get_child (tid_t tid)
+/* Our Implementation for Project 2 */
+/* Return child for given thread id. Mainly used in syscall.c and process.c */
+struct thread *thread_get_child (tid_t tid)
 {
 	struct list_elem *e;
-	for (e = list_begin (&thread_current ()->child_list); e != list_end (&thread_current ()->child_list);
-		e = list_next (e))
+	for (e=list_begin(&thread_current()->child_list); e!=list_end (&thread_current()->child_list);
+		e=list_next(e))
 	{
 		struct thread *t = list_entry(e, struct thread, child_elem);
 		if (t->tid == tid)

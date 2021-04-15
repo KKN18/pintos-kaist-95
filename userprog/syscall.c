@@ -117,19 +117,23 @@ int wait(pid_t pid) {
 }
 
 pid_t exec (const char *file) {
-	int ret;
-	ret = process_exec(file);
-	return ret;
+	return process_exec(file);
 }
 
 pid_t sys_fork (const char *thread_name, struct thread_and_if *tif) {
 	pid_t pid;
 	struct thread *child;
 
-	if((pid = process_fork(thread_name, tif)) == PID_ERROR)
+	pid = process_fork(thread_name, tif);
+
+	if(pid == PID_ERROR)
 		return PID_ERROR;
 	
 	child = thread_get_child(pid);
+
+	if(child == NULL)
+		return PID_ERROR;
+	 
 	sema_down(&child->filecopy_sema);
 
 	/* File copy is ended from now on */
