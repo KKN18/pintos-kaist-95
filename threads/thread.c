@@ -334,8 +334,8 @@ thread_exit (void) {
 
 #ifdef USERPROG
 	process_exit ();
-	sema_up (&thread_current()->wait_sema);
-	sema_down (&thread_current()->exit_sema);
+	sema_up (&thread_current()->wait_sema); //let parent know that it is going to exit
+	sema_down (&thread_current()->exit_sema); //child should wait until parent finish waiting
 
 #endif
 
@@ -511,11 +511,9 @@ init_thread (struct thread *t, const char *name, int priority) {
 
 #ifdef USERPROG
 
-	t->parent = running_thread();
 	sema_init (&t->wait_sema, 0);
 	sema_init (&t->exit_sema, 0);
 	sema_init (&t->filecopy_sema, 0);
-	sema_init (&t->load_sema, 0);
 	list_init (&t->child_list);
 	list_init (&t->file_list);
 	
@@ -970,17 +968,3 @@ void update_all_mlfqs (void) {
 }
 /* END */
 
-/* Our Implementation for Project 2 */
-/* Return child for given thread id. Mainly used in syscall.c and process.c */
-struct thread *thread_get_child (tid_t tid)
-{
-	struct list_elem *e;
-	for (e=list_begin(&thread_current()->child_list); e!=list_end (&thread_current()->child_list);
-		e=list_next(e))
-	{
-		struct thread *t = list_entry(e, struct thread, child_elem);
-		if (t->tid == tid)
-			return t;
-	}
-	return NULL;
-}

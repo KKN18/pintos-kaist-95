@@ -66,7 +66,6 @@ process_create_initd (const char *file_name) {
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (filename_copy, PRI_DEFAULT, initd, fn_copy);
-	sema_down(&thread_current()->load_sema);
 	free(free_ptr);
 	/* END */
 	if (tid == TID_ERROR)
@@ -260,7 +259,6 @@ process_exec (void *f_name) {
 	success = load (file_copy, &_if);
 	struct thread *t = thread_current();
 	/* If load failed, quit. */
-	sema_up(&thread_current()->parent->load_sema);
 	if (!success)
 	{
 		free(file_copy);
@@ -272,6 +270,21 @@ process_exec (void *f_name) {
 	NOT_REACHED ();
 }
 
+/* Our Implementation for Project 2 */
+/* Return child for given thread id. Mainly used in syscall.c and process.c */
+struct thread *find_child (tid_t tid)
+{
+	struct thread *curr = thread_current();
+	struct list_elem *p = list_begin(&curr->child_list);
+	/* If the thred has same tid with the parameter, that is what we are finding */
+	for (p; p!=list_end(&curr->child_list); p=list_next(p))
+	{
+		struct thread *child = list_entry(p, struct thread, child_elem);
+		if (child->tid == tid)
+			return child;
+	}
+	return NULL; // when there is no child with same tid, return null
+}
 
 /* Waits for thread TID to die and returns its exit status.  If
  * it was terminated by the kernel (i.e. killed due to an
@@ -288,20 +301,15 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	/* Our Implementation */
-	struct thread *child;
-	int exit_status;
-
-	child = thread_get_child(child_tid);
-	
-	if(child == NULL)
+	struct thread *child = find_child(child_tid); //find child which has tid same with child_tid
+	if (child == NULL) // if there is no appropriate child in child list
 		return -1;
-
 	/* Wait for child to exit. Child calls sema_up at thread_exit() */
-	sema_down (&child->wait_sema);
-	list_remove (&child->child_elem);
-	exit_status = child->exit_status;
-	/* Now delete process */
-	sema_up (&child->exit_sema);
+	sema_down(&child->wait_sema);
+	int exit_status = child->exit_status; //Get child's exit status to return it. we should get value here before child actually exits and clean the value.
+	list_remove(&child->child_elem); //remove child from current child list because it will exit and be deleted
+	/* Now child can exit continuously and actually be deleted*/
+	sema_up(&child->exit_sema);
 	return exit_status;
 	// END
 }

@@ -6,6 +6,7 @@
 #include "threads/loader.h"
 #include "userprog/gdt.h"
 #include "threads/flags.h"
+#include "userprog/process.h"
 #include "intrinsic.h"
 
 void syscall_entry (void);
@@ -129,8 +130,7 @@ pid_t sys_fork (const char *thread_name, struct thread_and_if *tif) {
 	if(pid == PID_ERROR)
 		return PID_ERROR;
 	
-	child = thread_get_child(pid);
-
+	child = find_child(pid); //find child which has tid same with pid
 	if(child == NULL)
 		return PID_ERROR;
 	 
@@ -190,7 +190,7 @@ int
 read (int fd, void *buffer, unsigned size)
 {
 	lock_acquire(&file_access);
-	if (fd == 0)
+	if (fd == 0) //STDIN
 	{
 		uint64_t *buf = (uint64_t *) buffer;
 		unsigned iRead=0;
@@ -219,7 +219,7 @@ read (int fd, void *buffer, unsigned size)
 int write (int fd, const void *buffer, unsigned size)
 {
 	lock_acquire(&file_access);
-    if (fd == 1)
+    if (fd == 1) //STDOUT
     {
       putbuf (buffer, size); // from stdio.h
 	  lock_release(&file_access);
@@ -232,8 +232,6 @@ int write (int fd, const void *buffer, unsigned size)
       lock_release(&file_access);
       return -1;
     }
-	if (file->deny_write)
-		file_deny_write(file);
     int iWrite = file_write(file, buffer, size); // file.h
     lock_release (&file_access);
     return iWrite;

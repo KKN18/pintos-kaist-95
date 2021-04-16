@@ -109,8 +109,6 @@ struct thread {
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	// Renamed Implementation
-	struct thread *parent;
-	struct semaphore load_sema;
 	int fd;
 	struct list file_list;
 	struct file *prog_file;
@@ -190,5 +188,4 @@ void thread_preempt (void);
 void thread_donate (struct thread *, struct thread *, int);
 void update_donate_priority (struct thread *);
 void thread_remove_lock (struct lock *);
-struct thread *thread_get_child (tid_t tid);
 #endif /* threads/thread.h */
