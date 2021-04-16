@@ -143,12 +143,6 @@ page_fault (struct intr_frame *f) {
 	// Our Implementation
    	if (!user || is_kernel_vaddr(fault_addr) || not_present) 
 	{	
-		/*
-		if(!strcmp(thread_current()->name, "child_16_O"))
-		{
-			exit(1);
-		}
-		*/
     	exit(-1);
     }
     // END
