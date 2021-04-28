@@ -4,6 +4,9 @@
 #include "vm/vm.h"
 #include "vm/inspect.h"
 #include "threads/synch.h"
+/* Our Implementation */
+#include "vm/uninit.h"
+/* END */
 
 static struct lock vm_lock;
 static struct lock eviction_lock;
@@ -91,15 +94,28 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
 
-	struct supplemental_page_table *spt = &thread_current ()->spt;
+	struct supplemental_page_table *spt = &thread_current()->spt;
+	struct page *page;
 
 	/* Check wheter the upage is already occupied or not. */
-	if (spt_find_page (spt, upage) == NULL) {
+	if ((page = spt_find_page (spt, upage)) == NULL) {
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
+		
+		if(!vm_claim_page(upage))
+			return false;
+
+		/* NOT SURE HERE */
+		page = spt_find_page (spt, upage);
+		
+		if (VM_TYPE(type) == VM_ANON)
+			uninit_new(page, upage, init, type, aux, anon_initializer);
+		else // VM_TYPE(type) == VM_FILE
+			uninit_new(page, upage, init, type, aux, file_backed_initializer);
 
 		/* TODO: Insert the page into the spt. */
+		spt_insert_page (spt, page);
 	}
 err:
 	return false;

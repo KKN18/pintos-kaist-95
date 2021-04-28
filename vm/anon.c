@@ -22,6 +22,7 @@ void
 vm_anon_init (void) {
 	/* TODO: Set up the swap_disk. */
 	swap_disk = NULL;
+	return;
 }
 
 /* Initialize the file mapping */
@@ -30,19 +31,30 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	/* Set up the handler */
 	page->operations = &anon_ops;
 
+	/* Our Implementation */
+	ASSERT(VM_TYPE(type) == VM_ANON);
+	page->type = type;
+	page->frame->kva = kva;
+	page->is_loaded = false;
+	/* END */
+
 	struct anon_page *anon_page = &page->anon;
+
+	return true;
 }
 
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
 	struct anon_page *anon_page = &page->anon;
+	return false;
 }
 
 /* Swap out the page by writing contents to the swap disk. */
 static bool
 anon_swap_out (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
+	return false;
 }
 
 /* Destroy the anonymous page. PAGE will be freed by the caller. */

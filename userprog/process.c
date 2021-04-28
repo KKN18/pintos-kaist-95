@@ -835,6 +835,27 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	/* GOJAE */
+	struct frame *frame = page->frame;
+    struct container *container = (struct container*) aux;
+    
+    struct file *file = container->file;
+    size_t page_read_bytes = container->page_read_bytes;
+    size_t page_zero_bytes = PGSIZE - page_read_bytes;
+    bool writable = container->writable;
+    off_t offset = container->offset;
+
+	palloc_free_page(container);
+	
+    file_seek(file, offset);
+
+    if (file_read(file, frame->kva, page_read_bytes) != (int)page_read_bytes)
+    {
+        return false;
+    }
+    memset(frame->kva + page_read_bytes, 0, page_zero_bytes);
+
+	return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -866,9 +887,16 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		/* GOJAE */
+		struct container* container;
+        container = palloc_get_page(PAL_ZERO | PAL_USER);
+        
+        container->file = file;
+        container->page_read_bytes = page_read_bytes;
+        container->writable = writable;
+        container->offset = ofs;
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
-					writable, lazy_load_segment, aux))
+					writable, lazy_load_segment, container))
 			return false;
 
 		/* Advance. */
