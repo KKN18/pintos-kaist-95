@@ -1,7 +1,11 @@
 #ifndef VM_VM_H
 #define VM_VM_H
 #include <stdbool.h>
+/* Our Implementation */
+#include "lib/kernel/hash.h"
+/* END */
 #include "threads/palloc.h"
+typedef int tid_t;
 
 enum vm_type {
 	/* page not initialized */
@@ -46,6 +50,9 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
+	bool is_loaded;
+	enum vm_type type;
+	struct hash_elem elem;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -89,7 +96,13 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
+	struct hash hash_table; 
 };
+
+unsigned suppl_pt_hash (const struct hash_elem *he, void *aux);
+bool suppl_pt_less (const struct hash_elem *hea, const struct hash_elem *heb,
+	       		void *aux);
+/* END OF CODYJACK */
 
 #include "threads/thread.h"
 void supplemental_page_table_init (struct supplemental_page_table *spt);

@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 /* Our Implementation */
 #include "threads/synch.h"
+#include "lib/kernel/hash.h"
 // END
 #ifdef VM
 #include "vm/vm.h"

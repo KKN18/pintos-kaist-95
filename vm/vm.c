@@ -14,6 +14,31 @@ static bool add_map (void *upage, void *kpage)
 	uint64_t *pml4 = thread_current()->pml4;
 	return pml4_set_page(pml4, upage, kpage, true);
 }
+
+/* CODYJACK */
+/* Functionality required by hash table*/
+unsigned
+suppl_pt_hash (const struct hash_elem *he, void *aux UNUSED)
+{
+  const struct page *page;
+  page = hash_entry (he, struct page, elem);
+  return hash_bytes (&page->va, sizeof page->va);
+}
+
+/* Functionality required by hash table*/
+bool
+suppl_pt_less (const struct hash_elem *hea,
+               const struct hash_elem *heb,
+	       void *aux UNUSED)
+{
+  const struct page *pagea;
+  const struct page *pageb;
+ 
+  pagea = hash_entry (hea, struct page, elem);
+  pageb = hash_entry (heb, struct page, elem);
+
+  return (pagea->va - pageb->va) < 0;
+}
 /* END */
 
 static const struct page_operations page_op = {
@@ -85,8 +110,13 @@ struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function. */
+	/* CODYJACK */
+	struct hash ht = spt->hash_table;
+	struct hash_elem *e;
 
-	return page;
+	page->va = va;
+	e = hash_find(&ht, &page->elem);
+	return e != NULL ? hash_entry (e, struct page, elem) : NULL;
 }
 
 /* Insert PAGE into spt with validation. */
@@ -95,7 +125,16 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
 	int succ = false;
 	/* TODO: Fill this function. */
-
+	/* CODYJACK */
+	struct hash_elem *result;
+	if (page == NULL)
+		return succ;
+	
+	result = hash_insert(&spt->hash_table, &page->elem);
+	if (result != NULL)
+		return succ;
+	
+	succ = true;
 	return succ;
 }
 
@@ -191,8 +230,7 @@ vm_claim_page (void *va UNUSED) {
 /* Claim the PAGE and set up the mmu. */
 static bool
 vm_do_claim_page (struct page *page) {
-	if 
-	struct frame *frame = vm_get_frame ();
+	struct frame *frame = vm_get_frame();
 	if (frame == NULL) return false;
 	/* Set links */
 	frame->page = page;
@@ -205,6 +243,9 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	/* CODYJACK */
+	hash_init (&spt->hash_table, suppl_pt_hash, suppl_pt_less, NULL);
+	return;
 }
 
 /* Copy supplemental page table from src to dst */
