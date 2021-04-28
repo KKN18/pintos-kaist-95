@@ -59,10 +59,14 @@ struct page {
 	};
 };
 
+struct list vm_frames;
+
 /* The representation of "frame" */
 struct frame {
 	void *kva;
 	struct page *page;
+	tid_t tid;
+	struct list_elem elem;
 };
 
 /* The function table for page operations.

@@ -3,6 +3,17 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "threads/synch.h"
+
+static struct lock vm_lock;
+static struct lock eviction_lock;
+
+static const struct page_operations page_op = {
+	.swap_in = pml4_set_page,
+	.swap_out = NULL,
+	.destroy = NULL,
+	.type = NULL,
+};
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -16,6 +27,9 @@ vm_init (void) {
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	list_init (&vm_frames);
+	lock_init (&vm_lock);
+	lock_init (&eviction_lock);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -112,7 +126,18 @@ static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
-
+	frame = palloc_get_page (PAL_USER);
+	if (frame != NULL)
+	{
+		frame->tid = thread_current()->tid;
+		lock_acquire (&vm_lock);
+		list_push_back (&vm_frames, frame->elem);
+		lock_release (&vm_lock);
+	}
+	else
+	{
+		PANIC ("todo");
+	}
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
 	return frame;
@@ -161,13 +186,12 @@ vm_claim_page (void *va UNUSED) {
 static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
-
+	if (frame == NULL) return false;
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-
 	return swap_in (page, frame->kva);
 }
 
