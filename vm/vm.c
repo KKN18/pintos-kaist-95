@@ -8,12 +8,18 @@
 static struct lock vm_lock;
 static struct lock eviction_lock;
 
+/* Our Implementation */
+static bool add_map (void *upage, void *kpage)
+{
+	uint64_t *pml4 = thread_current()->pml4;
+	return pml4_set_page(pml4, upage, kpage, true);
+}
+/* END */
+
 static const struct page_operations page_op = {
-	.swap_in = pml4_set_page,
-	.swap_out = NULL,
-	.destroy = NULL,
-	.type = NULL,
+	.swap_in = add_map
 };
+
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -131,7 +137,7 @@ vm_get_frame (void) {
 	{
 		frame->tid = thread_current()->tid;
 		lock_acquire (&vm_lock);
-		list_push_back (&vm_frames, frame->elem);
+		list_push_back (&vm_frames, &frame->elem);
 		lock_release (&vm_lock);
 	}
 	else
@@ -178,13 +184,14 @@ bool
 vm_claim_page (void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function */
-
+	page = pml4_get_page (thread_current()->pml4, va);
 	return vm_do_claim_page (page);
 }
 
 /* Claim the PAGE and set up the mmu. */
 static bool
 vm_do_claim_page (struct page *page) {
+	if 
 	struct frame *frame = vm_get_frame ();
 	if (frame == NULL) return false;
 	/* Set links */
