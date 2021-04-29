@@ -187,7 +187,8 @@ static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
-	frame = palloc_get_page (PAL_USER);
+	/* Not sure about this flag */
+	frame = palloc_get_page (PAL_USER | PAL_ZERO);
 	if (frame != NULL)
 	{
 		frame->tid = thread_current()->tid;
@@ -197,6 +198,7 @@ vm_get_frame (void) {
 	}
 	else
 	{
+		palloc_free_page(frame);
 		PANIC ("todo");
 	}
 	ASSERT (frame != NULL);
@@ -222,7 +224,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-
+	page = spt_find_page(spt, addr);
 	return vm_do_claim_page (page);
 }
 

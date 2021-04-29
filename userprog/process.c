@@ -801,9 +801,6 @@ setup_stack (struct intr_frame *if_) {
 			palloc_free_page (kpage);
 	}
 
-	/* Our Implementation */
-	// DEBUGGING ARGUMENT PASSING
-	// printf("Inside setup_stack():\n");
 	return success;
 }
 
@@ -917,6 +914,10 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+	success = vm_claim_page(stack_bottom);
+	
+	if(success)
+		if_->rsp = USER_STACK;
 
 	return success;
 }

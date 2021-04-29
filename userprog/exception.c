@@ -140,12 +140,15 @@ page_fault (struct intr_frame *f) {
 	write = (f->error_code & PF_W) != 0;
 	user = (f->error_code & PF_U) != 0;
 
+	/* Only for project 2 */
+	/*
 	// Our Implementation
    	if (!user || !is_user_vaddr(fault_addr) || not_present) 
 	{	
     	exit(-1);
     }
     // END
+	*/
 
 #ifdef VM
 	/* For project 3 and later. */

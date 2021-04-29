@@ -39,7 +39,14 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	/* END */
 
 	struct anon_page *anon_page = &page->anon;
+	/* Our Implementation */
+	anon_page->page_read_bytes = 0;
+	anon_page->writable = false;
+	anon_page->offset = 0;
+	anon_page->file_len = 0;
+	/* END */
 
+	/* What is the return value? */
 	return true;
 }
 
