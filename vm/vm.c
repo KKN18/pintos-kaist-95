@@ -102,13 +102,8 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
-		
-		if(!vm_claim_page(upage))
-			return false;
 
-		/* NOT SURE HERE */
-		page = spt_find_page (spt, upage);
-		
+		page = palloc_get_page(PAL_USER | PAL_ZERO);
 		if (VM_TYPE(type) == VM_ANON)
 			uninit_new(page, upage, init, type, aux, anon_initializer);
 		else // VM_TYPE(type) == VM_FILE
@@ -116,6 +111,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 
 		/* TODO: Insert the page into the spt. */
 		spt_insert_page (spt, page);
+		return true;
 	}
 err:
 	return false;
@@ -124,7 +120,7 @@ err:
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page = NULL;
+	struct page *page = palloc_get_page(PAL_USER | PAL_ZERO);
 	/* TODO: Fill this function. */
 	/* CODYJACK */
 	struct hash ht = spt->hash_table;
@@ -132,6 +128,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 
 	page->va = va;
 	e = hash_find(&ht, &page->elem);
+	palloc_free_page(page);
 	return e != NULL ? hash_entry (e, struct page, elem) : NULL;
 }
 
@@ -225,7 +222,9 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	page = spt_find_page(spt, addr);
-	return vm_do_claim_page (page);
+	bool res = vm_do_claim_page (page);
+	ASSERT(0);
+	return res;
 }
 
 /* Free the page.
@@ -242,6 +241,7 @@ vm_claim_page (void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function */
 	page = pml4_get_page (thread_current()->pml4, va);
+
 	return vm_do_claim_page (page);
 }
 
@@ -250,6 +250,7 @@ static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame();
 	if (frame == NULL) return false;
+	if (page == NULL) return false;
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;

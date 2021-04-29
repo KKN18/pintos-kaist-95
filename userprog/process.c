@@ -657,11 +657,9 @@ load (const char *file_name, struct intr_frame *if_) {
 				break;
 		}
 	}
-
 	/* Set up stack. */
 	if (!setup_stack (if_))
 		goto done;
-
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
 
@@ -895,7 +893,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
 					writable, lazy_load_segment, container))
 			return false;
-
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
@@ -914,8 +911,13 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-	success = vm_claim_page(stack_bottom);
-	
+	struct thread *t = thread_current();
+	if (pml4_get_page (t->pml4, stack_bottom) == NULL)
+	{
+		uint8_t *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+		pml4_set_page (t->pml4, stack_bottom, kpage, true);
+	}
+
 	if(success)
 		if_->rsp = USER_STACK;
 
