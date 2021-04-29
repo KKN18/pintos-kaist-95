@@ -912,15 +912,29 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
 	struct thread *t = thread_current();
+
 	if (pml4_get_page (t->pml4, stack_bottom) == NULL)
 	{
-		uint8_t *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-		pml4_set_page (t->pml4, stack_bottom, kpage, true);
+		void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+		success = pml4_set_page (t->pml4, stack_bottom, kpage, true);
+		if(success)
+		{
+			if_->rsp = USER_STACK;
+			vm_claim_page(stack_bottom);
+			
+			/* Should mark VM_MARKER_0 */
+		}
+		else
+		{
+			palloc_free_page(kpage);
+		}
+		
+		return success;
+	}
+	else 
+	{
+		return false;
 	}
 
-	if(success)
-		if_->rsp = USER_STACK;
-
-	return success;
 }
 #endif /* VM */

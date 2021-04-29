@@ -1,0 +1,42 @@
+Kernel command line: -q -f put args-single run 'args-single onearg'
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  189,849,600 loops/s.
+hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
+hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
+hd1:0: detected 102 sector (51 kB) disk, model "QEMU HARDDISK", serial "QM00003"
+hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004"
+Formatting file system...done.
+Boot complete.
+Putting 'args-single' into the file system...
+Executing 'args-single onearg':
+Find : 4194304
+Insert : 4194304
+Find : 4198400
+Insert : 4198400
+Find : 4202496
+Insert : 4202496
+Find : 4206592
+Insert : 4206592
+Find : 4210688
+Insert : 4210688
+Find : 6307840
+Insert : 6307840
+Find : 6311936
+Insert : 6311936
+Kernel PANIC at ../../threads/mmu.c:242 in pml4_set_page(): assertion `is_kernel_vaddr(kpage)' failed.
+Call stack: 0x800421868e 0x800420d926 0x8004221974 0x8004222165 0x80042220f3 0x800421d39f 0x800421ce9b 0x800421c238 0x800421bdaa 0x8004207656.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 71 ticks
+Thread: 34 idle ticks, 34 kernel ticks, 3 user ticks
+hd0:0: 0 reads, 0 writes
+hd0:1: 41 reads, 232 writes
+hd1:0: 102 reads, 0 writes
+hd1:1: 0 reads, 0 writes
+Console: 1507 characters output
+Key

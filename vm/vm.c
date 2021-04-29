@@ -6,16 +6,17 @@
 #include "threads/synch.h"
 /* Our Implementation */
 #include "vm/uninit.h"
+#include "threads/vaddr.h"
 /* END */
 
 static struct lock vm_lock;
 static struct lock eviction_lock;
 
 /* Our Implementation */
-static bool add_map (void *upage, void *kpage)
+static bool add_map (struct page *page, void *kpage)
 {
 	uint64_t *pml4 = thread_current()->pml4;
-	return pml4_set_page(pml4, upage, kpage, true);
+	return pml4_set_page(pml4, page->va, kpage, true);
 }
 
 /* CODYJACK */
@@ -127,8 +128,11 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct hash_elem *e;
 
 	page->va = va;
+	ASSERT (pg_ofs (page->va) == 0);
+	printf("Find : %ld\n", va);
 	e = hash_find(&ht, &page->elem);
 	palloc_free_page(page);
+	
 	return e != NULL ? hash_entry (e, struct page, elem) : NULL;
 }
 
@@ -143,11 +147,13 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 	if (page == NULL)
 		return succ;
 	
+	ASSERT (pg_ofs (page->va) == 0);
 	result = hash_insert(&spt->hash_table, &page->elem);
 	if (result != NULL)
 		return succ;
 	
 	succ = true;
+	printf("Insert : %ld\n", page->va);
 	return succ;
 }
 
@@ -221,10 +227,9 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	page = spt_find_page(spt, addr);
-	bool res = vm_do_claim_page (page);
-	ASSERT(0);
-	return res;
+	page = spt_find_page(spt, pg_round_down(addr));	
+
+	return vm_do_claim_page (page);
 }
 
 /* Free the page.
@@ -238,10 +243,10 @@ vm_dealloc_page (struct page *page) {
 /* Claim the page that allocate on VA. */
 bool
 vm_claim_page (void *va UNUSED) {
-	struct page *page = NULL;
+	struct page *page = palloc_get_page(PAL_USER | PAL_ZERO);
 	/* TODO: Fill this function */
-	page = pml4_get_page (thread_current()->pml4, va);
-
+	page->va = va;
+	page->operations = &page_op;
 	return vm_do_claim_page (page);
 }
 
@@ -256,7 +261,9 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	return swap_in (page, frame->kva);
+	bool res = swap_in (page, frame->kva);
+	ASSERT(0);
+	return res;
 }
 
 /* Initialize new supplemental page table */
