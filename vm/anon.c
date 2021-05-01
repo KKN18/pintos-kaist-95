@@ -30,11 +30,10 @@ bool
 anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	/* Set up the handler */
 	page->operations = &anon_ops;
-
+	printf("I'm in anon_initializer\n");
 	/* Our Implementation */
 	ASSERT(VM_TYPE(type) == VM_ANON);
 	page->type = type;
-	page->frame->kva = kva;
 	page->is_loaded = false;
 	/* END */
 

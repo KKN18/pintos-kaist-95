@@ -833,7 +833,6 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* GOJAE */
 	struct frame *frame = page->frame;
     struct container *container = (struct container*) aux;
-    
     struct file *file = container->file;
     size_t page_read_bytes = container->page_read_bytes;
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
@@ -849,7 +848,6 @@ lazy_load_segment (struct page *page, void *aux) {
         return false;
     }
     memset(frame->kva + page_read_bytes, 0, page_zero_bytes);
-
 	return true;
 }
 
@@ -913,6 +911,7 @@ setup_stack (struct intr_frame *if_) {
 	/* TODO: Your code goes here */
 	struct thread *t = thread_current();
 	success = vm_claim_page(stack_bottom);
+	spt_insert_page(&thread_current()->spt, pml4_get_page(thread_current()->pml4, pg_round_down(stack_bottom)));
 	/* Should mark VM_MARKER_0 */
 	if (success)
 		if_->rsp = USER_STACK;

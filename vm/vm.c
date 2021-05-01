@@ -149,7 +149,9 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 
 	page.va = va;
 	ASSERT (pg_ofs (page.va) == 0);
+	printf("	Bf find\n");
 	e = hash_find(&ht, &page.elem);
+	printf("	Af find\n");
 	return e != NULL ? hash_entry (e, struct page, elem) : NULL;
 }
 
@@ -168,7 +170,8 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 	result = hash_insert(&spt->hash_table, &page->elem);
 	if (result != NULL)
 		return succ;
-	
+	printf("INSERT : 0x%lx\n", page->va);
+	printf("Find? : %d\n", spt_find_page(spt, page->va));
 	succ = true;
 	return succ;
 }
@@ -244,11 +247,22 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	printf("(%s)\n", thread_current()->name);
-	printf("handle start\n");
+	printf("handle 0x%lx start\n", pg_round_down(addr));
 	page = spt_find_page(spt, pg_round_down(addr));	
-	printf("find 0x%lx page? %d\n",addr, page != NULL);
-	bool res = vm_do_claim_page (page);
-	printf("handle res = %d\n", res);
+	printf("find 0x%lx page? %d\n",pg_round_down(addr), page != NULL);
+	
+	struct frame* frame = vm_get_frame();
+	if (frame == NULL) return false;
+	if (page == NULL) return false;
+	/* Set links */
+	frame->page = page;
+	frame->kva = page;
+	page->frame = frame; // 해쉬 넣은 다음에 바꿔서??
+	bool res = pml4_set_page(thread_current()->pml4, page->va, frame->kva, true);
+	swap_in (page, frame->kva);
+	
+	// printf("set res : %d\n", res);
+	// printf("pml4 res : %d\n", pml4_get_page(thread_current()->pml4, pg_round_down(addr)) != NULL);
 	return res;
 }
 
