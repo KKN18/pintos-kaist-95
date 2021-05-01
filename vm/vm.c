@@ -16,7 +16,8 @@ static struct lock eviction_lock;
 static bool add_map (struct page *page, void *kva)
 {
 	uint64_t *pml4 = thread_current()->pml4;
-	return pml4_set_page(pml4, page->va, kva, true);
+	bool res = pml4_set_page(pml4, page->va, kva, true);
+	return res;
 }
 
 /* CODYJACK */
@@ -118,21 +119,37 @@ err:
 	return false;
 }
 
+// /* Find VA from spt and return page. On error, return NULL. */
+// struct page *
+// spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
+// 	struct page *page = palloc_get_page(PAL_USER | PAL_ZERO);
+// 	/* TODO: Fill this function. */
+// 	/* CODYJACK */
+// 	struct hash ht = spt->hash_table;
+// 	struct hash_elem *e;
+
+// 	page->va = va;
+// 	ASSERT (pg_ofs (page->va) == 0);
+// 	printf("11\n");
+// 	e = hash_find(&ht, &page->elem);
+// 	printf("22\n");
+// 	palloc_free_page(page);
+// 	printf("33\n");
+// 	return e != NULL ? hash_entry (e, struct page, elem) : NULL;
+// }
+
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page = palloc_get_page(PAL_USER | PAL_ZERO);
+	struct page page;
 	/* TODO: Fill this function. */
 	/* CODYJACK */
 	struct hash ht = spt->hash_table;
 	struct hash_elem *e;
 
-	page->va = va;
-	ASSERT (pg_ofs (page->va) == 0);
-	printf("Find : %ld\n", va);
-	e = hash_find(&ht, &page->elem);
-	palloc_free_page(page);
-	
+	page.va = va;
+	ASSERT (pg_ofs (page.va) == 0);
+	e = hash_find(&ht, &page.elem);
 	return e != NULL ? hash_entry (e, struct page, elem) : NULL;
 }
 
@@ -153,7 +170,6 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		return succ;
 	
 	succ = true;
-	printf("Insert : %ld\n", page->va);
 	return succ;
 }
 
@@ -227,9 +243,13 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
+	printf("(%s)\n", thread_current()->name);
+	printf("handle start\n");
 	page = spt_find_page(spt, pg_round_down(addr));	
-
-	return vm_do_claim_page (page);
+	printf("find 0x%lx page? %d\n",addr, page != NULL);
+	bool res = vm_do_claim_page (page);
+	printf("handle res = %d\n", res);
+	return res;
 }
 
 /* Free the page.
@@ -246,21 +266,20 @@ vm_claim_page (void *va UNUSED) {
 	struct page *page = palloc_get_page(PAL_USER | PAL_ZERO);
 	/* TODO: Fill this function */
 	page->va = va;
-	page->operations = &page_op;
 	return vm_do_claim_page (page);
 }
 
 /* Claim the PAGE and set up the mmu. */
 static bool
 vm_do_claim_page (struct page *page) {
-	struct frame *frame = vm_get_frame();
+	struct frame* frame = vm_get_frame();
 	if (frame == NULL) return false;
 	if (page == NULL) return false;
 	/* Set links */
 	frame->page = page;
 	frame->kva = page;
 	page->frame = frame;
-
+	page->operations = &page_op;
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	return swap_in (page,  frame->kva);
 }
