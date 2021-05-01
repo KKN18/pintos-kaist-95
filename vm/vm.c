@@ -13,10 +13,10 @@ static struct lock vm_lock;
 static struct lock eviction_lock;
 
 /* Our Implementation */
-static bool add_map (struct page *page, void *kpage)
+static bool add_map (struct page *page, void *kva)
 {
 	uint64_t *pml4 = thread_current()->pml4;
-	return pml4_set_page(pml4, page->va, kpage, true);
+	return pml4_set_page(pml4, page->va, kva, true);
 }
 
 /* CODYJACK */
@@ -258,12 +258,11 @@ vm_do_claim_page (struct page *page) {
 	if (page == NULL) return false;
 	/* Set links */
 	frame->page = page;
+	frame->kva = page;
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	bool res = swap_in (page, frame->kva);
-	ASSERT(0);
-	return res;
+	return swap_in (page,  frame->kva);
 }
 
 /* Initialize new supplemental page table */
