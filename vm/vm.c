@@ -7,6 +7,7 @@
 /* Our Implementation */
 #include "vm/uninit.h"
 #include "threads/vaddr.h"
+#define LOG 1
 /* END */
 
 static struct lock vm_lock;
@@ -141,6 +142,10 @@ err:
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
+	if(LOG)
+	{
+		printf("spt_find_page: 0x%lx\n", va);
+	}
 	struct page page;
 	/* TODO: Fill this function. */
 	/* CODYJACK */
@@ -149,9 +154,18 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 
 	page.va = va;
 	ASSERT (pg_ofs (page.va) == 0);
-	printf("	Bf find\n");
+	if(LOG)
+		printf("	Before find:\n");
 	e = hash_find(&ht, &page.elem);
-	printf("	Af find\n");
+	if(LOG)
+	{
+		printf("	After find: ");
+		if(e != NULL)
+			printf("Found it.\n");
+		else
+			printf("Not found.\n");
+	}
+		
 	return e != NULL ? hash_entry (e, struct page, elem) : NULL;
 }
 
@@ -170,8 +184,8 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 	result = hash_insert(&spt->hash_table, &page->elem);
 	if (result != NULL)
 		return succ;
-	printf("INSERT : 0x%lx\n", page->va);
-	printf("Find? : %d\n", spt_find_page(spt, page->va));
+	if(LOG)
+		printf("spt_insert_page: 0x%lx\n", page->va);
 	succ = true;
 	return succ;
 }
@@ -246,18 +260,27 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	printf("(%s)\n", thread_current()->name);
-	printf("handle 0x%lx start\n", pg_round_down(addr));
+	if(LOG)
+	{
+		printf("\nvm_try_handle_fault: Page fault in (%s)\n", thread_name());
+		printf("	Fault addr: 0x%lx\n", addr);
+		printf("	Fault page: 0x%lx\n", pg_round_down(addr));
+	}
 	page = spt_find_page(spt, pg_round_down(addr));	
-	printf("find 0x%lx page? %d\n",pg_round_down(addr), page != NULL);
-	
+	if(LOG)
+	{
+		if(page != NULL)
+			printf("	Found fault page in spt\n");
+		else
+			printf("	Not found in spt\n");
+	}
 	struct frame* frame = vm_get_frame();
 	if (frame == NULL) return false;
 	if (page == NULL) return false;
 	/* Set links */
 	frame->page = page;
 	frame->kva = page;
-	page->frame = frame; // 해쉬 넣은 다음에 바꿔서??
+	page->frame = frame;
 	bool res = pml4_set_page(thread_current()->pml4, page->va, frame->kva, true);
 	swap_in (page, frame->kva);
 	

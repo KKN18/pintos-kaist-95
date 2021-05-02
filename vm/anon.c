@@ -2,6 +2,7 @@
 
 #include "vm/vm.h"
 #include "devices/disk.h"
+#define LOG 1
 
 /* DO NOT MODIFY BELOW LINE */
 static struct disk *swap_disk;
@@ -29,8 +30,12 @@ vm_anon_init (void) {
 bool
 anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	/* Set up the handler */
+	if(LOG)
+	{
+		printf("anon_initializer\n");
+		printf("	page->va: 0x%lx, kva: 0x%lx\n", page->va, kva);
+	}
 	page->operations = &anon_ops;
-	printf("I'm in anon_initializer\n");
 	/* Our Implementation */
 	ASSERT(VM_TYPE(type) == VM_ANON);
 	page->type = type;

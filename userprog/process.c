@@ -23,6 +23,7 @@
 #include "vm/vm.h"
 #endif
 #define WORD_SIZE 8
+#define LOG 1
 
 static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
@@ -42,6 +43,8 @@ process_init (void) {
  * Notice that THIS SHOULD BE CALLED ONCE. */
 tid_t
 process_create_initd (const char *file_name) {
+	if(LOG)
+		printf("process_create_initd: %s\n", file_name);
 	char *fn_copy;
 	tid_t tid;
 
@@ -78,6 +81,8 @@ process_create_initd (const char *file_name) {
 /* A thread function that launches first user process. */
 static void
 initd (void *f_name) {
+	if(LOG)
+		printf("initd %s\n", f_name);
 #ifdef VM
 	supplemental_page_table_init (&thread_current ()->spt);
 #endif
@@ -232,6 +237,8 @@ error:
  * Returns -1 on fail. */
 int
 process_exec (void *f_name) {
+	if(LOG)
+		printf("process_exec: %s\n", f_name);
 	char *file_name = f_name;
 	bool success;
 
@@ -261,10 +268,14 @@ process_exec (void *f_name) {
 	/* If load failed, quit. */
 	if (!success)
 	{
+		if(LOG)
+			printf("Load failed. Quit\n");
 		free(file_copy);
 		return -1;
 	}
 	free(file_copy);
+	if(LOG)
+		printf("Load successful, start switched process.\n");
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -317,6 +328,8 @@ process_wait (tid_t child_tid UNUSED) {
 /* Exit the process. This function is called by thread_exit (). */
 void
 process_exit (void) {
+	if(LOG)
+		printf("process_exit: %s\n", thread_name());
 	struct thread *curr = thread_current ();
 	/* TODO: Your code goes here.
 	 * TODO: Implement process termination message (see
@@ -539,6 +552,8 @@ bool pass_arguments(char *file_name, struct intr_frame *if_){
  * Returns true if successful, false otherwise. */
 static bool
 load (const char *file_name, struct intr_frame *if_) {
+	if(LOG)
+		printf("load %s\n", file_name);
 	struct thread *t = thread_current ();
 	struct ELF ehdr;
 	struct file *file = NULL;
@@ -827,6 +842,8 @@ install_page (void *upage, void *kpage, bool writable) {
 
 static bool
 lazy_load_segment (struct page *page, void *aux) {
+	if(LOG)
+		printf("Lazy_load_segment on page 0x%lx\n", page->va);
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
@@ -848,6 +865,11 @@ lazy_load_segment (struct page *page, void *aux) {
         return false;
     }
     memset(frame->kva + page_read_bytes, 0, page_zero_bytes);
+	
+	if(LOG)
+	{
+		printf("	Page(0x%lx) loaded successfully\n", page->va);
+	}
 	return true;
 }
 
@@ -902,6 +924,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
 static bool
 setup_stack (struct intr_frame *if_) {
+	if(LOG)
+		printf("setup_stack\n");
 	bool success = false;
 	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
 

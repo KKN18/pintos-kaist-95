@@ -10,6 +10,7 @@
 
 #include "vm/vm.h"
 #include "vm/uninit.h"
+#define LOG 1
 
 static bool uninit_initialize (struct page *page, void *kva);
 static void uninit_destroy (struct page *page);
@@ -44,12 +45,15 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 /* Initalize the page on first fault */
 static bool
 uninit_initialize (struct page *page, void *kva) {
+	if(LOG)
+	{
+		printf("uninit_initialize\n");
+		printf("	page->va: 0x%lx, kva: 0x%lx\n", page->va, kva);
+	}
 	struct uninit_page *uninit = &page->uninit;
 	/* Fetch first, page_initialize may overwrite the values */
 	vm_initializer *init = uninit->init;
 	void *aux = uninit->aux;
-	
-	printf("Uninit initialize\n");
 	/* TODO: You may need to fix this function. */
 	return uninit->page_initializer (page, uninit->type, kva) &&
 		(init ? init (page, aux) : true);
