@@ -855,21 +855,20 @@ lazy_load_segment (struct page *page, void *aux) {
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
     bool writable = container->writable;
     off_t offset = container->offset;
-
-	palloc_free_page(container);
 	
     file_seek(file, offset);
 
-    if (file_read(file, frame->kva, page_read_bytes) != (int)page_read_bytes)
+    if (file_read(file, frame, page_read_bytes) != (int)page_read_bytes)
     {
         return false;
     }
-    memset(frame->kva + page_read_bytes, 0, page_zero_bytes);
+    memset(frame + page_read_bytes, 0, page_zero_bytes);
 	
 	if(LOG)
 	{
 		printf("	Page(0x%lx) loaded successfully\n", page->va);
 	}
+	palloc_free_page(container);
 	return true;
 }
 

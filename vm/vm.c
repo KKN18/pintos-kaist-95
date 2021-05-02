@@ -222,6 +222,10 @@ vm_evict_frame (void) {
 static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
+	if(LOG)
+	{
+		printf("vm_get_frame\n");
+	}
 	/* TODO: Fill this function. */
 	/* Not sure about this flag */
 	frame = palloc_get_page (PAL_USER | PAL_ZERO);
@@ -274,18 +278,18 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		else
 			printf("	Not found in spt\n");
 	}
-	struct frame* frame = vm_get_frame();
+	// Same with vm_do_claim_page
+	struct frame *frame = vm_get_frame();
 	if (frame == NULL) return false;
 	if (page == NULL) return false;
 	/* Set links */
 	frame->page = page;
 	frame->kva = page;
 	page->frame = frame;
-	bool res = pml4_set_page(thread_current()->pml4, page->va, frame->kva, true);
+	bool res = pml4_set_page(thread_current()->pml4, page->va, frame, true);
+	// Call lazy_load_segment
 	swap_in (page, frame->kva);
-	
-	// printf("set res : %d\n", res);
-	// printf("pml4 res : %d\n", pml4_get_page(thread_current()->pml4, pg_round_down(addr)) != NULL);
+	// hash_replace(&spt->hash_table, &page->elem);
 	return res;
 }
 
@@ -300,6 +304,10 @@ vm_dealloc_page (struct page *page) {
 /* Claim the page that allocate on VA. */
 bool
 vm_claim_page (void *va UNUSED) {
+	if(LOG)
+	{
+		printf("vm_claim_page on va: 0x%lx\n", va);
+	}
 	struct page *page = palloc_get_page(PAL_USER | PAL_ZERO);
 	/* TODO: Fill this function */
 	page->va = va;
@@ -309,6 +317,8 @@ vm_claim_page (void *va UNUSED) {
 /* Claim the PAGE and set up the mmu. */
 static bool
 vm_do_claim_page (struct page *page) {
+	if(LOG)
+		printf("vm_do_claim_page\n");
 	struct frame* frame = vm_get_frame();
 	if (frame == NULL) return false;
 	if (page == NULL) return false;
