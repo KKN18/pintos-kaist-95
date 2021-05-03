@@ -839,6 +839,14 @@ install_page (void *upage, void *kpage, bool writable) {
 /* From here, codes will be used after project 3.
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
+bool install_page (void *upage, void *kpage, bool writable) {
+	struct thread *t = thread_current ();
+
+	/* Verify that there's not already a page at that virtual
+	 * address, then map our page there. */
+	return (pml4_get_page (t->pml4, upage) == NULL
+			&& pml4_set_page (t->pml4, upage, kpage, writable));
+}
 
 static bool
 lazy_load_segment (struct page *page, void *aux) {
@@ -868,7 +876,7 @@ lazy_load_segment (struct page *page, void *aux) {
 	{
 		printf("	Page(0x%lx) loaded successfully\n", page->va);
 	}
-	palloc_free_page(container);
+	// palloc_free_page(container);
 	return true;
 }
 
@@ -893,6 +901,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
 
+	/* Not sure */
+	file_seek(file, ofs);
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
@@ -902,7 +912,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
 		/* GOJAE */
-		struct container* container;
+		struct container *container;
         container = palloc_get_page(PAL_ZERO | PAL_USER);
         
         container->file = file;
@@ -937,9 +947,10 @@ setup_stack (struct intr_frame *if_) {
 	success = vm_claim_page(stack_bottom);
 	page = pml4_get_page(t->pml4, stack_bottom);
 	ASSERT(page != NULL)
+	ASSERT(page->frame != NULL)
 	// Mark the page as STACK (VM_MARKER_0)
 	page->type = VM_MARKER_0;
-	spt_insert_page(&t->spt, pml4_get_page(t->pml4, stack_bottom));
+	spt_insert_page(&t->spt, page);
 	if (success)
 		if_->rsp = USER_STACK;
 	return success;

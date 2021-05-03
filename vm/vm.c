@@ -7,6 +7,7 @@
 /* Our Implementation */
 #include "vm/uninit.h"
 #include "threads/vaddr.h"
+#include "userprog/process.h"
 #define LOG 1
 /* END */
 
@@ -19,7 +20,7 @@ static bool add_map (struct page *page, void *kva)
 	if(LOG)
 		printf("add_map for page(0x%lx), kva: 0x%lx\n", page->va, kva);
 	uint64_t *pml4 = thread_current()->pml4;
-	bool res = pml4_set_page(pml4, page->va, kva, true);
+	bool res = install_page(page->va, kva, true);
 	return res;
 }
 
@@ -52,7 +53,6 @@ suppl_pt_less (const struct hash_elem *hea,
 static const struct page_operations page_op = {
 	.swap_in = add_map
 };
-
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -107,7 +107,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
-
 		page = palloc_get_page(PAL_USER | PAL_ZERO);
 		if (VM_TYPE(type) == VM_ANON)
 			uninit_new(page, upage, init, type, aux, anon_initializer);
@@ -275,7 +274,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	swap_in (page, frame->kva);
 	if(LOG)
 		printf("	Lazy_load_segment return\n");
-	bool res = pml4_set_page(t->pml4, page->va, frame, true);
+	bool res = install_page(page->va, frame, true);
 	// hash_replace(&spt->hash_table, &page->elem);
 	return res;
 }
