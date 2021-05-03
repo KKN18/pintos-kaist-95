@@ -933,9 +933,13 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
 	struct thread *t = thread_current();
+	struct page *page;
 	success = vm_claim_page(stack_bottom);
-	spt_insert_page(&thread_current()->spt, pml4_get_page(thread_current()->pml4, pg_round_down(stack_bottom)));
-	/* Should mark VM_MARKER_0 */
+	page = pml4_get_page(t->pml4, stack_bottom);
+	ASSERT(page != NULL)
+	// Mark the page as STACK (VM_MARKER_0)
+	page->type = VM_MARKER_0;
+	spt_insert_page(&t->spt, pml4_get_page(t->pml4, stack_bottom));
 	if (success)
 		if_->rsp = USER_STACK;
 	return success;

@@ -16,6 +16,8 @@ static struct lock eviction_lock;
 /* Our Implementation */
 static bool add_map (struct page *page, void *kva)
 {
+	if(LOG)
+		printf("add_map for page(0x%lx), kva: 0x%lx\n", page->va, kva);
 	uint64_t *pml4 = thread_current()->pml4;
 	bool res = pml4_set_page(pml4, page->va, kva, true);
 	return res;
@@ -28,7 +30,7 @@ suppl_pt_hash (const struct hash_elem *he, void *aux UNUSED)
 {
   const struct page *page;
   page = hash_entry (he, struct page, elem);
-  return hash_bytes (&page->va, sizeof page->va);
+  return hash_bytes (&page->va, sizeof(page->va));
 }
 
 /* Functionality required by hash table*/
@@ -119,25 +121,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 err:
 	return false;
 }
-
-// /* Find VA from spt and return page. On error, return NULL. */
-// struct page *
-// spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-// 	struct page *page = palloc_get_page(PAL_USER | PAL_ZERO);
-// 	/* TODO: Fill this function. */
-// 	/* CODYJACK */
-// 	struct hash ht = spt->hash_table;
-// 	struct hash_elem *e;
-
-// 	page->va = va;
-// 	ASSERT (pg_ofs (page->va) == 0);
-// 	printf("11\n");
-// 	e = hash_find(&ht, &page->elem);
-// 	printf("22\n");
-// 	palloc_free_page(page);
-// 	printf("33\n");
-// 	return e != NULL ? hash_entry (e, struct page, elem) : NULL;
-// }
 
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
@@ -260,10 +243,12 @@ vm_handle_wp (struct page *page UNUSED) {
 bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
-	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
+	struct thread *t = thread_current();
+	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
+	// ASSERT(addr != NULL);
 	if(LOG)
 	{
 		printf("\nvm_try_handle_fault: Page fault in (%s)\n", thread_name());
@@ -284,11 +269,13 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	if (page == NULL) return false;
 	/* Set links */
 	frame->page = page;
-	frame->kva = page;
+	frame->kva = frame;
 	page->frame = frame;
-	bool res = pml4_set_page(thread_current()->pml4, page->va, frame, true);
 	// Call lazy_load_segment
 	swap_in (page, frame->kva);
+	if(LOG)
+		printf("	Lazy_load_segment return\n");
+	bool res = pml4_set_page(t->pml4, page->va, frame, true);
 	// hash_replace(&spt->hash_table, &page->elem);
 	return res;
 }
@@ -320,15 +307,17 @@ vm_do_claim_page (struct page *page) {
 	if(LOG)
 		printf("vm_do_claim_page\n");
 	struct frame* frame = vm_get_frame();
-	if (frame == NULL) return false;
-	if (page == NULL) return false;
+	if (frame == NULL) 
+		return false;
+	if (page == NULL) 
+		return false;
 	/* Set links */
 	frame->page = page;
-	frame->kva = page;
+	frame->kva = frame;
 	page->frame = frame;
 	page->operations = &page_op;
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	return swap_in (page,  frame->kva);
+	return swap_in (page, frame->kva);
 }
 
 /* Initialize new supplemental page table */
