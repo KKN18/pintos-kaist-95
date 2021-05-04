@@ -8,6 +8,7 @@
 #include "vm/uninit.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
+#include "threads/mmu.h"
 #define LOG 1
 /* END */
 
@@ -163,6 +164,7 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		return succ;
 	
 	ASSERT (pg_ofs (page->va) == 0);
+	ASSERT (spt_find_page(spt, page->va) == NULL);
 	result = hash_insert(&spt->hash_table, &page->elem);
 	if (result != NULL)
 		return succ;
@@ -247,14 +249,13 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	// ASSERT(addr != NULL);
 	if(LOG)
 	{
 		printf("\nvm_try_handle_fault: Page fault in (%s)\n", thread_name());
 		printf("	Fault addr: 0x%lx\n", addr);
 		printf("	Fault page: 0x%lx\n", pg_round_down(addr));
 	}
-	page = spt_find_page(spt, pg_round_down(addr));	
+	page = spt_find_page(spt, pg_round_down(addr));
 	if(LOG)
 	{
 		if(page != NULL)
@@ -262,19 +263,30 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		else
 			printf("	Not found in spt\n");
 	}
+
 	// Same with vm_do_claim_page
+
 	struct frame *frame = vm_get_frame();
-	if (frame == NULL) return false;
-	if (page == NULL) return false;
+	if (frame == NULL) 
+	{
+		// ASSERT(0);
+		return false;
+	}
+	if (page == NULL)
+	{
+		return false;
+	}
 	/* Set links */
 	frame->page = page;
 	frame->kva = frame;
 	page->frame = frame;
 	// Call lazy_load_segment
-	swap_in (page, frame->kva);
+	bool res = swap_in (page, frame->kva);
+	printf("\npml4_get_page result in vm_try_handle_fault: 0x%lx\n", pml4_get_page(thread_current()->pml4, pg_round_down(addr)));
+
 	if(LOG)
 		printf("	Lazy_load_segment return\n");
-	bool res = install_page(page->va, frame, true);
+	// bool res = install_page(page->va, frame, true);
 	// hash_replace(&spt->hash_table, &page->elem);
 	return res;
 }
@@ -316,6 +328,7 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 	page->operations = &page_op;
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
+	// Call add_map
 	return swap_in (page, frame->kva);
 }
 

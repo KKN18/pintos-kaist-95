@@ -864,6 +864,7 @@ lazy_load_segment (struct page *page, void *aux) {
     bool writable = container->writable;
     off_t offset = container->offset;
 	
+	ASSERT(file != NULL);
     file_seek(file, offset);
 
     if (file_read(file, frame, page_read_bytes) != (int)page_read_bytes)
@@ -871,13 +872,19 @@ lazy_load_segment (struct page *page, void *aux) {
         return false;
     }
     memset(frame + page_read_bytes, 0, page_zero_bytes);
+
+	/* TODO */
+	// Load anon_page elements from container.
 	
 	if(LOG)
 	{
 		printf("	Page(0x%lx) loaded successfully\n", page->va);
 	}
+	/* Free might cause error, but when free then? */
 	// palloc_free_page(container);
-	return true;
+	printf("\n\n0x%lx\n\n", page->va);
+	return install_page(page->va, frame, writable);
+	// return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -914,7 +921,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		/* GOJAE */
 		struct container *container;
         container = palloc_get_page(PAL_ZERO | PAL_USER);
-        
+
         container->file = file;
         container->page_read_bytes = page_read_bytes;
         container->writable = writable;
@@ -953,6 +960,8 @@ setup_stack (struct intr_frame *if_) {
 	spt_insert_page(&t->spt, page);
 	if (success)
 		if_->rsp = USER_STACK;
+	else
+		palloc_free_page(page);
 	return success;
 }
 #endif /* VM */
