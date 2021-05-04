@@ -269,11 +269,12 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct frame *frame = vm_get_frame();
 	if (frame == NULL) 
 	{
-		// ASSERT(0);
+		ASSERT(0);
 		return false;
 	}
 	if (page == NULL)
 	{
+		ASSERT(0);
 		return false;
 	}
 	/* Set links */
@@ -287,7 +288,6 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	if(LOG)
 		printf("	Lazy_load_segment return\n");
 	// bool res = install_page(page->va, frame, true);
-	// hash_replace(&spt->hash_table, &page->elem);
 	return res;
 }
 

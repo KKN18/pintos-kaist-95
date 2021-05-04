@@ -15,4 +15,12 @@ struct thread *find_child (tid_t tid);
 bool install_page (void *upage, void *kpage, bool writable);
 /* END */
 
+struct container {
+    struct file *file;
+    size_t page_read_bytes;
+    bool writable;
+    off_t offset;
+    size_t file_len;
+};
+
 #endif /* userprog/process.h */

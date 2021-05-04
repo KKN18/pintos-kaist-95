@@ -920,7 +920,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
 		/* GOJAE */
 		struct container *container;
-        container = palloc_get_page(PAL_ZERO | PAL_USER);
+        container = palloc_get_page(PAL_USER);
 
         container->file = file;
         container->page_read_bytes = page_read_bytes;
@@ -933,6 +933,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+		ofs += page_read_bytes;
 	}
 	return true;
 }
@@ -957,11 +958,15 @@ setup_stack (struct intr_frame *if_) {
 	ASSERT(page->frame != NULL)
 	// Mark the page as STACK (VM_MARKER_0)
 	page->type = VM_MARKER_0;
+	page->is_loaded = true;
 	spt_insert_page(&t->spt, page);
 	if (success)
 		if_->rsp = USER_STACK;
 	else
+	{
 		palloc_free_page(page);
+		PANIC("setup stack error");
+	}
 	return success;
 }
 #endif /* VM */

@@ -102,14 +102,6 @@ struct supplemental_page_table {
 	struct hash hash_table; 
 };
 
-struct container {
-    struct file *file;
-    size_t page_read_bytes;
-    bool writable;
-    off_t offset;
-    size_t file_len;
-};
-
 unsigned suppl_pt_hash (const struct hash_elem *he, void *aux);
 bool suppl_pt_less (const struct hash_elem *hea, const struct hash_elem *heb,
 	       		void *aux);
