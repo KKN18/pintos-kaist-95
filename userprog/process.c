@@ -23,7 +23,7 @@
 #include "vm/vm.h"
 #endif
 #define WORD_SIZE 8
-#define LOG 1
+#define LOG 0
 
 static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
@@ -867,11 +867,11 @@ lazy_load_segment (struct page *page, void *aux) {
 	ASSERT(file != NULL);
     file_seek(file, offset);
 
-    if (file_read(file, frame, page_read_bytes) != (int)page_read_bytes)
+    if (file_read(file, frame->kva, page_read_bytes) != (int)page_read_bytes)
     {
         return false;
     }
-    memset(frame + page_read_bytes, 0, page_zero_bytes);
+    memset((frame->kva) + page_read_bytes, 0, page_zero_bytes);
 
 	/* TODO */
 	// Load anon_page elements from container.
@@ -882,8 +882,8 @@ lazy_load_segment (struct page *page, void *aux) {
 	}
 	/* Free might cause error, but when free then? */
 	// palloc_free_page(container);
-	printf("\n\n0x%lx\n\n", page->va);
-	return install_page(page->va, frame, writable);
+	// printf("\n\n0x%lx\n\n", page->va);
+	return install_page(page->va, frame->kva, writable);
 	// return true;
 }
 
@@ -919,8 +919,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
 		/* GOJAE */
-		struct container *container;
-        container = palloc_get_page(PAL_USER);
+		struct container *container = (struct container*)malloc(sizeof(struct container));
 
         container->file = file;
         container->page_read_bytes = page_read_bytes;
@@ -953,18 +952,13 @@ setup_stack (struct intr_frame *if_) {
 	struct thread *t = thread_current();
 	struct page *page;
 	success = vm_claim_page(stack_bottom);
-	page = pml4_get_page(t->pml4, stack_bottom);
-	ASSERT(page != NULL)
-	ASSERT(page->frame != NULL)
 	// Mark the page as STACK (VM_MARKER_0)
-	page->type = VM_MARKER_0;
-	page->is_loaded = true;
-	spt_insert_page(&t->spt, page);
+	// page->type = VM_MARKER_0;
+	// page->is_loaded = true;
 	if (success)
 		if_->rsp = USER_STACK;
 	else
 	{
-		palloc_free_page(page);
 		PANIC("setup stack error");
 	}
 	return success;

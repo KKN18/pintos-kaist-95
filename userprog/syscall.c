@@ -279,7 +279,7 @@ int dup2 (int oldfd, int newfd)
 void
 syscall_handler (struct intr_frame *f) {
 	// TODO: Your implementation goes here.
-	printf("SYSCALL : %d\n", f->R.rax);
+	// printf("SYSCALL : %d\n", f->R.rax);
 	/* Our Implementation */
 	switch (f->R.rax) {
 		case SYS_HALT:

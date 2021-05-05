@@ -10,7 +10,7 @@
 
 #include "vm/vm.h"
 #include "vm/uninit.h"
-#define LOG 1
+#define LOG 0
 
 static bool uninit_initialize (struct page *page, void *kva);
 static void uninit_destroy (struct page *page);

@@ -2,7 +2,7 @@
 
 #include "vm/vm.h"
 #include "devices/disk.h"
-#define LOG 1
+#define LOG 0
 
 /* DO NOT MODIFY BELOW LINE */
 static struct disk *swap_disk;

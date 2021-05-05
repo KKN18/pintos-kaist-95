@@ -129,12 +129,12 @@ page_fault (struct intr_frame *f) {
 	   data.  It is not necessarily the address of the instruction
 	   that caused the fault (that's f->rip). */
 
-	printf("\n\nrip value before rcr2(): 0x%lx\n\n", f->rip);
+	// printf("\n\nrip value before rcr2(): 0x%lx\n\n", f->rip);
 	fault_addr = (void *) rcr2();
-	printf("\n\nrip value after rcr2(): 0x%lx\n\n", f->rip);
+	// printf("\n\nrip value after rcr2(): 0x%lx\n\n", f->rip);
 
 	// ASSERT(pml4_get_page(thread_current()->pml4, fault_addr) != NULL);
-	printf("\npml4_get_page result: 0x%lx\n", pml4_get_page(thread_current()->pml4, fault_addr));
+	// printf("\npml4_get_page result: 0x%lx\n", pml4_get_page(thread_current()->pml4, fault_addr));
 
 	/* Turn interrupts back on (they were only off so that we could
 	   be assured of reading CR2 before it changed). */
@@ -157,12 +157,6 @@ page_fault (struct intr_frame *f) {
 	*/
 
 #ifdef VM
-	if(fault_addr == NULL)
-	{
-		printf("\n==============================\n"); 
-		printf("HEY, FAULT ADDRESS IS NULL!!\n");
-		printf("==============================\n");
-	}
 	/* if the page fault it caused by a write violation, exit the process*/
   	/*
 	if (!not_present)

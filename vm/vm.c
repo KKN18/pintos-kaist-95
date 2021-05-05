@@ -9,7 +9,7 @@
 #include "threads/vaddr.h"
 #include "userprog/process.h"
 #include "threads/mmu.h"
-#define LOG 1
+#define LOG 0
 /* END */
 
 static struct lock vm_lock;
@@ -205,16 +205,19 @@ vm_evict_frame (void) {
  * space.*/
 static struct frame *
 vm_get_frame (void) {
-	struct frame *frame = NULL;
+	
 	if(LOG)
 	{
 		printf("vm_get_frame\n");
 	}
 	/* TODO: Fill this function. */
 	/* Not sure about this flag */
-	frame = palloc_get_page (PAL_USER | PAL_ZERO);
+
+	uint8_t *kva = palloc_get_page (PAL_USER | PAL_ZERO);
+	struct frame *frame = calloc(1, sizeof *frame);
 	if (frame != NULL)
 	{
+		frame->kva = kva;
 		frame->tid = thread_current()->tid;
 		lock_acquire (&vm_lock);
 		list_push_back (&vm_frames, &frame->elem);
@@ -279,11 +282,10 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	}
 	/* Set links */
 	frame->page = page;
-	frame->kva = frame;
 	page->frame = frame;
 	// Call lazy_load_segment
 	bool res = swap_in (page, frame->kva);
-	printf("\npml4_get_page result in vm_try_handle_fault: 0x%lx\n", pml4_get_page(thread_current()->pml4, pg_round_down(addr)));
+	// printf("\npml4_get_page result in vm_try_handle_fault: 0x%lx\n", pml4_get_page(thread_current()->pml4, pg_round_down(addr)));
 
 	if(LOG)
 		printf("	Lazy_load_segment return\n");
@@ -324,8 +326,8 @@ vm_do_claim_page (struct page *page) {
 		return false;
 	/* Set links */
 	frame->page = page;
-	frame->kva = frame;
 	page->frame = frame;
+	// printf("	frame->kva 0x%lx\n", page->frame->kva);
 	page->operations = &page_op;
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	// Call add_map
