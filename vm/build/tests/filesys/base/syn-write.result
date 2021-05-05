@@ -1,0 +1,27 @@
+FAIL
+Kernel panic in run: PANIC at ../../threads/synch.c:206 in lock_acquire(): assertion `!lock_held_by_current_thread (lock)' failed.
+Call stack: 0x800421868e 0x800420ac8c 0x800420c784 0x800422290c 0x8004222538 0x80042226ed 0x800421c507 0x800421c4d3 0x8004207226 0x800421ddb3 0x8004222228 0x800421d926 0x80042097a0 0x8004209bbe 0x800420c85e 0x800422290c 0x8004222538 0x80042226ed 0x800421c507 0x800421c4d3 0x8004207226 0x800421c151 0x8004207656
+Translation of call stack:
+0x000000800421868e: debug_panic (lib/kernel/debug.c:32)
+0x000000800420ac8c: lock_acquire (threads/synch.c:207)
+0x000000800420c784: free (threads/malloc.c:219)
+0x000000800422290c: uninit_destroy (vm/uninit.c:79)
+0x0000008004222538: kill_page (vm/vm.c:383)
+0x00000080042226ed: supplemental_page_table_kill (vm/vm.c:415)
+0x000000800421c507: process_cleanup (userprog/process.c:362)
+0x000000800421c4d3: process_exit (userprog/process.c:348)
+0x0000008004207226: thread_exit (threads/thread.c:337)
+0x000000800421ddb3: wait (userprog/syscall.c:116)
+0x0000008004222228: vm_try_handle_fault (vm/vm.c:290)
+0x000000800421d926: page_fault (userprog/exception.c:145)
+0x00000080042097a0: intr_handler (threads/interrupt.c:352)
+0x0000008004209bbe: intr_entry (threads/intr-stubs.o:?)
+0x000000800420c85e: free (threads/malloc.c:226 (discriminator 3))
+0x000000800422290c: uninit_destroy (vm/uninit.c:79)
+0x0000008004222538: kill_page (vm/vm.c:383)
+0x00000080042226ed: supplemental_page_table_kill (vm/vm.c:415)
+0x000000800421c507: process_cleanup (userprog/process.c:362)
+0x000000800421c4d3: process_exit (userprog/process.c:348)
+0x0000008004207226: thread_exit (threads/thread.c:337)
+0x000000800421c151: process_exec (userprog/process.c:239)
+0x0000008004207656: kernel_thread (threads/thread.c:489)

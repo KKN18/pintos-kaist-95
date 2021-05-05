@@ -10,10 +10,11 @@
 #include "userprog/process.h"
 #include "threads/mmu.h"
 #define LOG 0
-/* END */
 
-static struct lock vm_lock;
-static struct lock eviction_lock;
+#include "lib/kernel/hash.h"
+#define list_elem_to_hash_elem(LIST_ELEM)                       \
+   list_entry(LIST_ELEM, struct hash_elem, list_elem)
+/* END */
 
 /* Our Implementation */
 static bool add_map (struct page *page, void *kva)
@@ -204,14 +205,12 @@ vm_evict_frame (void) {
  * space.*/
 static struct frame *
 vm_get_frame (void) {
-	
 	if(LOG)
 	{
 		printf("vm_get_frame\n");
 	}
 	/* TODO: Fill this function. */
-	/* Not sure about this flag */
-
+	/* Eviction is not considered yet. */
 	uint8_t *kva = palloc_get_page (PAL_USER | PAL_ZERO);
 	struct frame *frame = calloc(1, sizeof *frame);
 	if (frame != NULL)
@@ -235,6 +234,8 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
+	struct thread *t = thread_current();
+	return vm_claim_page(pg_round_down(addr));
 }
 
 /* Handle the fault on write_protected page */
@@ -266,10 +267,14 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	
 	if(page == NULL)
 	{
-		//if(fault_addr is part of stack)
-		//	grow_stack
-		// 	return
-		// else
+		if (addr < USER_STACK && addr > USER_STACK - (1 << 20))
+		{
+			if (f->rsp == addr + 8 || addr > f->rsp)
+			{
+				vm_stack_growth(pg_round_down(addr));
+				return true;
+			}
+		}
 		exit(-1);
 	}
 	
@@ -296,6 +301,9 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	if(LOG)
 		printf("	Lazy_load_segment return\n");
 
+	if(res)
+		page->is_loaded = true;
+
 	return res;
 }
 
@@ -315,6 +323,7 @@ vm_claim_page (void *va UNUSED) {
 		printf("vm_claim_page on va: 0x%lx\n", va);
 	}
 	struct page *page = palloc_get_page(PAL_USER | PAL_ZERO);
+	ASSERT(page != NULL);
 	/* TODO: Fill this function */
 	page->va = va;
 	return vm_do_claim_page (page);
@@ -326,8 +335,12 @@ vm_do_claim_page (struct page *page) {
 	if(LOG)
 		printf("vm_do_claim_page\n");
 	struct frame* frame = vm_get_frame();
-	if (frame == NULL) 
+	if (frame == NULL)
+	{
+		/* Free page in vm_claim_page */
+		palloc_free_page(page);
 		return false;
+	}
 	if (page == NULL) 
 		return false;
 	/* Set links */
@@ -343,15 +356,50 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
-	/* CODYJACK */
 	hash_init (&spt->hash_table, suppl_pt_hash, suppl_pt_less, NULL);
+	return;
+}
+
+/* CODYJACK */
+static void copy_page (struct hash_elem *e, struct supplemental_page_table *dst)
+{
+	struct page *page = hash_entry(e, struct page, elem);
+	struct page *newpage = palloc_get_page(PAL_USER | PAL_ZERO);
+	if(newpage == NULL) {
+		palloc_free_page(newpage);
+		PANIC("not enough memory");
+	}
+
+	memcpy(newpage, page, PGSIZE);
+	spt_insert_page(dst, newpage);
+
+	return;
+}
+
+static void kill_page (struct hash_elem *e, void *aux)
+{
+	struct page *page = hash_entry(e, struct page, elem);
+	destroy(page);
+	palloc_free_page(page);
 	return;
 }
 
 /* Copy supplemental page table from src to dst */
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
-		struct supplemental_page_table *src UNUSED) {
+      struct supplemental_page_table *src UNUSED) {
+	ASSERT(dst->hash_table.elem_cnt == 0)
+	size_t i;
+	struct hash *h = &src->hash_table;
+	for (i = 0; i < h->bucket_cnt; i++) {
+		struct list *bucket = &h->buckets[i];
+		struct list_elem *elem, *next;
+
+		for (elem = list_begin (bucket); elem != list_end (bucket); elem = next) {
+			next = list_next (elem);
+			copy_page (list_elem_to_hash_elem (elem), dst);
+		}
+	}
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -359,4 +407,18 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	struct hash *h = &spt->hash_table;
+	struct list *buckets = h->buckets;
+	size_t i;
+	for (i = 0; i < h->bucket_cnt; i++) {
+		struct list *bucket = &h->buckets[i];
+		while (!list_empty (bucket)) {
+			struct list_elem *list_elem = list_pop_front (bucket);
+			struct hash_elem *hash_elem = list_elem_to_hash_elem (list_elem);
+			kill_page (hash_elem, h->aux);
+		}
+		list_init (bucket);
+	}
+	h->elem_cnt = 0;
+	return;
 }

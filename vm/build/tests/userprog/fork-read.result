@@ -1,0 +1,20 @@
+FAIL
+Kernel panic in run: PANIC at ../../filesys/file.c:156 in file_seek(): assertion `new_pos >= 0' failed.
+Call stack: 0x800421868e 0x800421ff35 0x800421d18a 0x800422287a 0x8004222289 0x800421d926 0x80042097a0 0x8004209bbe 0x8004220ce3 0x800421fc2f 0x800421e154 0x800421e69b 0x800421da53 0x4001d0 0x40053e 0x400fdf
+Translation of call stack:
+0x000000800421868e: debug_panic (lib/kernel/debug.c:32)
+0x000000800421ff35: file_seek (filesys/file.c:157)
+0x000000800421d18a: lazy_load_segment (userprog/process.c:874)
+0x000000800422287a: uninit_initialize (vm/uninit.c:60 (discriminator 4))
+0x0000008004222289: vm_try_handle_fault (vm/vm.c:299)
+0x000000800421d926: page_fault (userprog/exception.c:145)
+0x00000080042097a0: intr_handler (threads/interrupt.c:352)
+0x0000008004209bbe: intr_entry (threads/intr-stubs.o:?)
+0x0000008004220ce3: inode_read_at (filesys/inode.c:225)
+0x000000800421fc2f: file_read (filesys/file.c:75)
+0x000000800421e154: read (userprog/syscall.c:213)
+0x000000800421e69b: syscall_handler (userprog/syscall.c:340)
+0x000000800421da53: no_sti (userprog/syscall-entry.o:?)
+0x00000000004001d0: (unknown)
+0x000000000040053e: (unknown)
+0x0000000000400fdf: (unknown)

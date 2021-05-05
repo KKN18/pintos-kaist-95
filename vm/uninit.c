@@ -10,6 +10,8 @@
 
 #include "vm/vm.h"
 #include "vm/uninit.h"
+/* Our Implementation */
+#include "vm/anon.h"
 #define LOG 0
 
 static bool uninit_initialize (struct page *page, void *kva);
@@ -68,4 +70,15 @@ uninit_destroy (struct page *page) {
 	struct uninit_page *uninit UNUSED = &page->uninit;
 	/* TODO: Fill this function.
 	 * TODO: If you don't have anything to do, just return. */
+	/* Free container */
+	void *aux = uninit->aux;
+	ASSERT(aux != NULL);
+	free(aux);
+
+	if(VM_TYPE(VM_ANON))
+		_anon_destroy(page);
+	else if(VM_TYPE(VM_FILE))
+		return;
+
+	return;
 }

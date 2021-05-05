@@ -47,7 +47,6 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	anon_page->page_read_bytes = 0;
 	anon_page->writable = true;
 	anon_page->offset = 0;
-	anon_page->file_len = 0;
 	/* END */
 
 	/* What is the return value? */
@@ -72,4 +71,13 @@ anon_swap_out (struct page *page) {
 static void
 anon_destroy (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
+	if(page->is_loaded == true)
+	{
+		// file_close(file);
+	}
+}
+
+/* Our Implementation of non-static version */
+void _anon_destroy (struct page *page) {
+	return anon_destroy(page);
 }

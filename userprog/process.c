@@ -861,7 +861,13 @@ lazy_load_segment (struct page *page, void *aux) {
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
     bool writable = container->writable;
     off_t offset = container->offset;
-	
+
+	// Load anon_page from container
+	struct anon_page *anon_page = &page->anon;
+	anon_page->page_read_bytes = page_read_bytes;
+	anon_page->writable = writable;
+	anon_page->offset = offset;
+
 	ASSERT(file != NULL);
     file_seek(file, offset);
 

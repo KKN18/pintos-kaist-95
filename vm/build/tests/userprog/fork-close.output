@@ -1,0 +1,31 @@
+Kernel command line: -q -f put fork-close put sample.txt run fork-close
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  157,081,600 loops/s.
+hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
+hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
+hd1:0: detected 110 sector (55 kB) disk, model "QEMU HARDDISK", serial "QM00003"
+hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004"
+Formatting file system...done.
+Boot complete.
+Putting 'fork-close' into the file system...
+Putting 'sample.txt' into the file system...
+Executing 'fork-close':
+(fork-close) begin
+(fork-close) open "sample.txt"
+Kernel PANIC at ../../filesys/file.c:156 in file_seek(): assertion `new_pos >= 0' failed.
+Call stack: 0x800421868e 0x800421ff35 0x800421d18a 0x800422287a 0x8004222289 0x800421d926 0x80042097a0 0x8004209bbe 0x8004220ce3 0x800421fc2f 0x800421e154 0x800421e69b 0x800421da53 0x4001ac 0x4003e6 0x400e87 0.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 77 ticks
+Thread: 34 idle ticks, 36 kernel ticks, 7 user ticks
+hd0:0: 0 reads, 0 writes
+hd0:1: 113 reads, 258 writes
+hd1:0: 110 reads, 0 writes
+hd1:1: 0 reads, 0 writes
+Console: 1429 characters output
+Key
