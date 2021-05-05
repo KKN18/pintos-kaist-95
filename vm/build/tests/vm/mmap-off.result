@@ -1,2 +1,0 @@
-FAIL
-run: try to mmap with offset 0x1000: FAILED

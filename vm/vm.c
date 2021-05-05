@@ -369,10 +369,27 @@ static void copy_page (struct hash_elem *e, struct supplemental_page_table *dst)
 		palloc_free_page(newpage);
 		PANIC("not enough memory");
 	}
-
 	memcpy(newpage, page, PGSIZE);
 	spt_insert_page(dst, newpage);
-
+	if (newpage->is_loaded == true)
+	{
+		bool writable = true;
+		if (newpage->type == VM_ANON)
+			writable = newpage->anon.writable;
+		struct frame* frame = vm_get_frame();
+		if (frame == NULL)
+		{
+			/* Free page in vm_claim_page */
+			palloc_free_page(page);
+			return false;
+		}
+		if (newpage == NULL) 
+			return false;
+		/* Set links */
+		frame->page = newpage;
+		page->frame = frame;
+		install_page (newpage->va, frame->kva, writable);
+	}
 	return;
 }
 
@@ -400,6 +417,7 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 			copy_page (list_elem_to_hash_elem (elem), dst);
 		}
 	}
+	return true;
 }
 
 /* Free the resource hold by the supplemental page table */

@@ -218,7 +218,6 @@ __do_fork (void *aux) {
 	free(tif->if_);
 	free(tif);
 	sema_up(&current->filecopy_sema);
-
 	/* END */
 	process_init ();
 
