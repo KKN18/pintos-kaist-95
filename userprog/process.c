@@ -259,10 +259,8 @@ process_exec (void *f_name) {
 		return -1;
 	}
 	strlcpy(file_copy, file_name, strlen(file_name) + 1);
-	// palloc_free_page(file_name);
 	process_cleanup ();
 	/* And then load the binary */
-	// printf("file : %s\n", file_name);
 	success = load (file_copy, &_if);
 	struct thread *t = thread_current();
 	/* If load failed, quit. */
@@ -872,19 +870,13 @@ lazy_load_segment (struct page *page, void *aux) {
         return false;
     }
     memset((frame->kva) + page_read_bytes, 0, page_zero_bytes);
-
-	/* TODO */
-	// Load anon_page elements from container.
 	
 	if(LOG)
 	{
 		printf("	Page(0x%lx) loaded successfully\n", page->va);
 	}
-	/* Free might cause error, but when free then? */
-	// palloc_free_page(container);
-	// printf("\n\n0x%lx\n\n", page->va);
+
 	return install_page(page->va, frame->kva, writable);
-	// return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -919,7 +911,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
 		/* GOJAE */
-		struct container *container = (struct container*)malloc(sizeof(struct container));
+		struct container *container = (struct container*) malloc(sizeof(struct container));
 
         container->file = file;
         container->page_read_bytes = page_read_bytes;
@@ -953,8 +945,6 @@ setup_stack (struct intr_frame *if_) {
 	struct page *page;
 	success = vm_claim_page(stack_bottom);
 	// Mark the page as STACK (VM_MARKER_0)
-	// page->type = VM_MARKER_0;
-	// page->is_loaded = true;
 	if (success)
 		if_->rsp = USER_STACK;
 	else

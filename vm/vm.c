@@ -185,7 +185,6 @@ static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
-
 	return victim;
 }
 
@@ -252,13 +251,28 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
+	/* Page fault is TRUE page fault */
+  	if (addr == NULL || !not_present || !is_user_vaddr(addr))
+		exit(-1);
+
 	if(LOG)
 	{
 		printf("\nvm_try_handle_fault: Page fault in (%s)\n", thread_name());
 		printf("	Fault addr: 0x%lx\n", addr);
 		printf("	Fault page: 0x%lx\n", pg_round_down(addr));
 	}
+
 	page = spt_find_page(spt, pg_round_down(addr));
+	
+	if(page == NULL)
+	{
+		//if(fault_addr is part of stack)
+		//	grow_stack
+		// 	return
+		// else
+		exit(-1);
+	}
+	
 	if(LOG)
 	{
 		if(page != NULL)
@@ -268,28 +282,20 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	}
 
 	// Same with vm_do_claim_page
-
 	struct frame *frame = vm_get_frame();
-	if (frame == NULL) 
-	{
-		ASSERT(0);
+	if (frame == NULL)
 		return false;
-	}
 	if (page == NULL)
-	{
-		ASSERT(0);
 		return false;
-	}
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
 	// Call lazy_load_segment
 	bool res = swap_in (page, frame->kva);
-	// printf("\npml4_get_page result in vm_try_handle_fault: 0x%lx\n", pml4_get_page(thread_current()->pml4, pg_round_down(addr)));
-
+	
 	if(LOG)
 		printf("	Lazy_load_segment return\n");
-	// bool res = install_page(page->va, frame, true);
+
 	return res;
 }
 

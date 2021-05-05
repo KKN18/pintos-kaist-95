@@ -129,43 +129,18 @@ page_fault (struct intr_frame *f) {
 	   data.  It is not necessarily the address of the instruction
 	   that caused the fault (that's f->rip). */
 
-	// printf("\n\nrip value before rcr2(): 0x%lx\n\n", f->rip);
 	fault_addr = (void *) rcr2();
-	// printf("\n\nrip value after rcr2(): 0x%lx\n\n", f->rip);
-
-	// ASSERT(pml4_get_page(thread_current()->pml4, fault_addr) != NULL);
-	// printf("\npml4_get_page result: 0x%lx\n", pml4_get_page(thread_current()->pml4, fault_addr));
 
 	/* Turn interrupts back on (they were only off so that we could
 	   be assured of reading CR2 before it changed). */
 	intr_enable ();
-
 
 	/* Determine cause. */
 	not_present = (f->error_code & PF_P) == 0;
 	write = (f->error_code & PF_W) != 0;
 	user = (f->error_code & PF_U) != 0;
 
-	/* Only for project 2 */
-	/*
-	// Our Implementation
-   	if (!user || !is_user_vaddr(fault_addr) || not_present) 
-	{	
-    	exit(-1);
-    }
-    // END
-	*/
-
 #ifdef VM
-	/* if the page fault it caused by a write violation, exit the process*/
-  	/*
-	if (!not_present)
-    	exit (-1);
-	*/
-	
-  	// if (fault_addr == NULL || !not_present || !is_user_vaddr(fault_addr))
-		//exit(-1);
-	
 	/* For project 3 and later. */
 	if (vm_try_handle_fault (f, fault_addr, user, write, not_present))
 		return;
