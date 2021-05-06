@@ -376,41 +376,21 @@ static void copy_page (struct hash_elem *e, struct supplemental_page_table *dst)
 	struct thread *t = thread_current();
 	struct page *page = hash_entry(e, struct page, elem);
 	struct page *newpage = (struct page *)malloc(sizeof(struct page));
-	newpage->va = page->va;
+	memcpy(newpage, page, sizeof(struct page));
+	// newpage->va = page->va;
 	if (newpage == NULL) {
 		palloc_free_page(newpage);
 		PANIC("not enough memory");
 	}
-	if (page->is_loaded == true)
+	/* Only allocate physical memory if loaded */
+	if(page->is_loaded)
 	{
-		struct frame *newframe = vm_get_frame();
-		newframe->page = newpage;
-		newpage->frame = newframe;
-		newpage->is_loaded = true;
-		newpage->type = VM_ANON;
-		
-		struct anon_page *anon_page = &page->anon;
-		struct anon_page *new_anon_page = &newpage->anon;
+		/* For calling add map */
+		newpage->operations = &page_op;
+		vm_do_claim_page(newpage);
 
-		new_anon_page->writable = anon_page->writable;
-
-		memcpy(newframe->kva, page->frame->kva, PGSIZE);
-		bool res = add_map(newpage, newframe->kva);
-		if (!res) ASSERT(0);
-		return;
-	}
-	else
-	{
-		ASSERT(page->type == VM_ANON);
-		// memcpy(newpage, page, PGSIZE);
-		struct container *container = (struct container*)malloc(sizeof(struct container));
-		struct anon_page *anon_page = &page->anon;
-		container->file = anon_page->file;
-		container->page_read_bytes = anon_page->page_read_bytes;
-		container->writable = anon_page->writable;
-		container->offset = anon_page->offset;
-		uninit_new (newpage, page->va, call_lazy_load_segment, VM_ANON ,container, anon_initializer);
-		spt_insert_page(dst, newpage);
+		/* Copy physical memory */
+		memcpy(newpage->frame->kva, page->frame->kva, PGSIZE);
 	}
 	return;
 }

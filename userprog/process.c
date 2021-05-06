@@ -886,10 +886,6 @@ lazy_load_segment (struct page *page, void *aux) {
 	return install_page(page->va, frame->kva, writable);
 }
 
-bool call_lazy_load_segment (struct page *page, void *aux) {
-	return lazy_load_segment(page, aux);
-}
-
 /* Loads a segment starting at offset OFS in FILE at address
  * UPAGE.  In total, READ_BYTES + ZERO_BYTES bytes of virtual
  * memory are initialized, as follows:
