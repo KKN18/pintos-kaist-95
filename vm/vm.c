@@ -22,7 +22,10 @@ static bool add_map (struct page *page, void *kva)
 	if(LOG)
 		printf("add_map for page(0x%lx), kva: 0x%lx\n", page->va, kva);
 	uint64_t *pml4 = thread_current()->pml4;
-	bool res = install_page(page->va, kva, true);
+	bool writable = true;
+	if(page->type == VM_ANON)
+		writable == page->anon.writable;
+	bool res = install_page(page->va, kva, writable);
 	return res;
 }
 
@@ -137,7 +140,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct hash_elem *e;
 
 	page.va = va;
-	ASSERT (pg_ofs (page.va) == 0);
+	// ASSERT (pg_ofs (page.va) == 0);
 	if(LOG)
 		printf("	Before find:\n");
 	e = hash_find(&ht, &page.elem);
@@ -164,7 +167,7 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 	if (page == NULL)
 		return succ;
 	
-	ASSERT (pg_ofs (page->va) == 0);
+	// ASSERT (pg_ofs (page->va) == 0);
 	ASSERT (spt_find_page(spt, page->va) == NULL);
 	result = hash_insert(&spt->hash_table, &page->elem);
 	if (result != NULL)
@@ -254,7 +257,10 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Your code goes here */
 	/* Page fault is TRUE page fault */
   	if (addr == NULL || !not_present || !is_user_vaddr(addr))
+	{
+		printf("%d\n", addr==NULL);
 		exit(-1);
+	}
 
 	if(LOG)
 	{
@@ -296,6 +302,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	frame->page = page;
 	page->frame = frame;
 	// Call lazy_load_segment
+	// printf("	Before swap\n");
 	bool res = swap_in (page, frame->kva);
 	
 	if(LOG)
@@ -303,7 +310,6 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 
 	if(res)
 		page->is_loaded = true;
-
 	return res;
 }
 
@@ -326,6 +332,8 @@ vm_claim_page (void *va UNUSED) {
 	ASSERT(page != NULL);
 	/* TODO: Fill this function */
 	page->va = va;
+	page->type = VM_UNINIT;
+	spt_insert_page(&thread_current()->spt, page);
 	return vm_do_claim_page (page);
 }
 
@@ -343,11 +351,13 @@ vm_do_claim_page (struct page *page) {
 	}
 	if (page == NULL) 
 		return false;
+	
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
 	// printf("	frame->kva 0x%lx\n", page->frame->kva);
 	page->operations = &page_op;
+	page->is_loaded = true;
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	// Call add_map
 	return swap_in (page, frame->kva);
@@ -363,32 +373,44 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 /* CODYJACK */
 static void copy_page (struct hash_elem *e, struct supplemental_page_table *dst)
 {
+	struct thread *t = thread_current();
 	struct page *page = hash_entry(e, struct page, elem);
-	struct page *newpage = palloc_get_page(PAL_USER | PAL_ZERO);
-	if(newpage == NULL) {
+	struct page *newpage = (struct page *)malloc(sizeof(struct page));
+	newpage->va = page->va;
+	if (newpage == NULL) {
 		palloc_free_page(newpage);
 		PANIC("not enough memory");
 	}
-	memcpy(newpage, page, PGSIZE);
-	spt_insert_page(dst, newpage);
-	if (newpage->is_loaded == true)
+	if (page->is_loaded == true)
 	{
-		bool writable = true;
-		if (newpage->type == VM_ANON)
-			writable = newpage->anon.writable;
-		struct frame* frame = vm_get_frame();
-		if (frame == NULL)
-		{
-			/* Free page in vm_claim_page */
-			palloc_free_page(page);
-			return false;
-		}
-		if (newpage == NULL) 
-			return false;
-		/* Set links */
-		frame->page = newpage;
-		page->frame = frame;
-		install_page (newpage->va, frame->kva, writable);
+		struct frame *newframe = vm_get_frame();
+		newframe->page = newpage;
+		newpage->frame = newframe;
+		newpage->is_loaded = true;
+		newpage->type = VM_ANON;
+		
+		struct anon_page *anon_page = &page->anon;
+		struct anon_page *new_anon_page = &newpage->anon;
+
+		new_anon_page->writable = anon_page->writable;
+
+		memcpy(newframe->kva, page->frame->kva, PGSIZE);
+		bool res = add_map(newpage, newframe->kva);
+		if (!res) ASSERT(0);
+		return;
+	}
+	else
+	{
+		ASSERT(page->type == VM_ANON);
+		// memcpy(newpage, page, PGSIZE);
+		struct container *container = (struct container*)malloc(sizeof(struct container));
+		struct anon_page *anon_page = &page->anon;
+		container->file = anon_page->file;
+		container->page_read_bytes = anon_page->page_read_bytes;
+		container->writable = anon_page->writable;
+		container->offset = anon_page->offset;
+		uninit_new (newpage, page->va, call_lazy_load_segment, VM_ANON ,container, anon_initializer);
+		spt_insert_page(dst, newpage);
 	}
 	return;
 }

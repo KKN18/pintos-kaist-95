@@ -220,7 +220,6 @@ __do_fork (void *aux) {
 	sema_up(&current->filecopy_sema);
 	/* END */
 	process_init ();
-
 	/* Finally, switch to the newly created process. */
 	if (succ)
 		do_iret (&if_);
@@ -845,6 +844,8 @@ bool install_page (void *upage, void *kpage, bool writable) {
 			&& pml4_set_page (t->pml4, upage, kpage, writable));
 }
 
+
+
 static bool
 lazy_load_segment (struct page *page, void *aux) {
 	if(LOG)
@@ -863,6 +864,7 @@ lazy_load_segment (struct page *page, void *aux) {
 
 	// Load anon_page from container
 	struct anon_page *anon_page = &page->anon;
+	anon_page->file = file;
 	anon_page->page_read_bytes = page_read_bytes;
 	anon_page->writable = writable;
 	anon_page->offset = offset;
@@ -882,6 +884,10 @@ lazy_load_segment (struct page *page, void *aux) {
 	}
 
 	return install_page(page->va, frame->kva, writable);
+}
+
+bool call_lazy_load_segment (struct page *page, void *aux) {
+	return lazy_load_segment(page, aux);
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -947,9 +953,10 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
 	struct thread *t = thread_current();
-	struct page *page;
 	success = vm_claim_page(stack_bottom);
 	// Mark the page as STACK (VM_MARKER_0)
+	struct page *page = spt_find_page(&t->spt, stack_bottom);
+	page->type = VM_MARKER_0;
 	if (success)
 		if_->rsp = USER_STACK;
 	else

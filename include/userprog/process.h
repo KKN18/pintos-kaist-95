@@ -13,6 +13,7 @@ void process_activate (struct thread *next);
 /* Our Implementation */
 struct thread *find_child (tid_t tid);
 bool install_page (void *upage, void *kpage, bool writable);
+bool call_lazy_load_segment (struct page *page, void *aux);
 /* END */
 
 struct container {
@@ -20,7 +21,6 @@ struct container {
     size_t page_read_bytes;
     bool writable;
     off_t offset;
-    size_t file_len;
 };
 
 #endif /* userprog/process.h */
