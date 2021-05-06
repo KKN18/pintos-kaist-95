@@ -950,7 +950,7 @@ setup_stack (struct intr_frame *if_) {
 	/* TODO: Your code goes here */
 	struct thread *t = thread_current();
 	success = vm_claim_page(stack_bottom);
-	// Mark the page as STACK (VM_MARKER_0)
+	// // Mark the page as STACK (VM_MARKER_0)
 	struct page *page = spt_find_page(&t->spt, stack_bottom);
 	page->type = VM_MARKER_0;
 	if (success)

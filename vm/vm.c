@@ -332,8 +332,8 @@ vm_claim_page (void *va UNUSED) {
 	ASSERT(page != NULL);
 	/* TODO: Fill this function */
 	page->va = va;
-	page->type = VM_UNINIT;
-	spt_insert_page(&thread_current()->spt, page);
+	page->operations = &page_op;
+	spt_insert_page (&thread_current()->spt, page);
 	return vm_do_claim_page (page);
 }
 
@@ -355,8 +355,6 @@ vm_do_claim_page (struct page *page) {
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
-	// printf("	frame->kva 0x%lx\n", page->frame->kva);
-	page->operations = &page_op;
 	page->is_loaded = true;
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	// Call add_map
