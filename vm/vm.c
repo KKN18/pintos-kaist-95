@@ -292,24 +292,11 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 			printf("	Not found in spt\n");
 	}
 
-	// Same with vm_do_claim_page
-	struct frame *frame = vm_get_frame();
-	if (frame == NULL)
-		return false;
-	if (page == NULL)
-		return false;
-	/* Set links */
-	frame->page = page;
-	page->frame = frame;
-	// Call lazy_load_segment
-	// printf("	Before swap\n");
-	bool res = swap_in (page, frame->kva);
-	
-	if(LOG)
-		printf("	Lazy_load_segment return\n");
+	bool res = vm_do_claim_page(page);
 
 	if(res)
 		page->is_loaded = true;
+
 	return res;
 }
 
@@ -355,7 +342,6 @@ vm_do_claim_page (struct page *page) {
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
-	page->is_loaded = true;
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	// Call add_map
 	return swap_in (page, frame->kva);

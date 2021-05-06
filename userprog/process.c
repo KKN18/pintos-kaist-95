@@ -954,7 +954,11 @@ setup_stack (struct intr_frame *if_) {
 	struct page *page = spt_find_page(&t->spt, stack_bottom);
 	page->type = VM_MARKER_0;
 	if (success)
+	{
+		page->is_loaded = true;
 		if_->rsp = USER_STACK;
+	}
+		
 	else
 	{
 		PANIC("setup stack error");
