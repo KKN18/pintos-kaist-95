@@ -258,7 +258,6 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* Page fault is TRUE page fault */
   	if (addr == NULL || !not_present || !is_user_vaddr(addr))
 	{
-		printf("%d\n", addr==NULL);
 		exit(-1);
 	}
 
@@ -359,13 +358,17 @@ static void copy_page (struct hash_elem *e, struct supplemental_page_table *dst)
 {
 	struct thread *t = thread_current();
 	struct page *page = hash_entry(e, struct page, elem);
-	struct page *newpage = (struct page *)malloc(sizeof(struct page));
+	struct page *newpage = palloc_get_page(PAL_USER | PAL_ZERO);
 	memcpy(newpage, page, sizeof(struct page));
 	// newpage->va = page->va;
 	if (newpage == NULL) {
 		palloc_free_page(newpage);
 		PANIC("not enough memory");
 	}
+
+	/* Insert to child's spt */
+	spt_insert_page(&t->spt, newpage);
+	
 	/* Only allocate physical memory if loaded */
 	if(page->is_loaded)
 	{

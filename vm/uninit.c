@@ -73,7 +73,8 @@ uninit_destroy (struct page *page) {
 	/* Free container */
 	void *aux = uninit->aux;
 	ASSERT(aux != NULL);
-	free(aux);
+	/* When free? */
+	// free(aux)
 
 	if(VM_TYPE(VM_ANON))
 		_anon_destroy(page);
