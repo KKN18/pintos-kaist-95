@@ -238,7 +238,14 @@ vm_get_frame (void) {
 static void
 vm_stack_growth (void *addr UNUSED) {
 	struct thread *t = thread_current();
-	return vm_claim_page(pg_round_down(addr));
+	if(vm_claim_page(pg_round_down(addr)))
+	{
+		struct page *page = spt_find_page(&t->spt, pg_round_down(addr));
+		page->type = VM_MARKER_0;
+		page->is_loaded = true;
+		return true;
+	}
+	return false;
 }
 
 /* Handle the fault on write_protected page */

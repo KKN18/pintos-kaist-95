@@ -1,0 +1,47 @@
+pintos -v -k -T 60 -m 20   --fs-disk=10 -p tests/vm/pt-write-code2:pt-write-code2 -p ../../tests/vm/sample.txt:sample.txt --swap-disk=4 -- -q   -f run pt-write-code2 < /dev/null 2> tests/vm/pt-write-code2.errors > tests/vm/pt-write-code2.output
+perl -I../.. ../../tests/vm/pt-write-code2.ck tests/vm/pt-write-code2 tests/vm/pt-write-code2.result
+FAIL tests/vm/pt-write-code2
+run: survived reading data into code segment: FAILED
+
+pintos -v -k -T 60 -m 20   --fs-disk=10 -p tests/vm/pt-grow-stk-sc:pt-grow-stk-sc --swap-disk=4 -- -q   -f run pt-grow-stk-sc < /dev/null 2> tests/vm/pt-grow-stk-sc.errors > tests/vm/pt-grow-stk-sc.output
+perl -I../.. ../../tests/vm/pt-grow-stk-sc.ck tests/vm/pt-grow-stk-sc tests/vm/pt-grow-stk-sc.result
+FAIL tests/vm/pt-grow-stk-sc
+Test output failed to match any acceptable form.
+
+Acceptable output:
+  (pt-grow-stk-sc) begin
+  (pt-grow-stk-sc) create "sample.txt"
+  (pt-grow-stk-sc) open "sample.txt"
+  (pt-grow-stk-sc) write "sample.txt"
+  (pt-grow-stk-sc) 2nd open "sample.txt"
+  (pt-grow-stk-sc) read "sample.txt"
+  (pt-grow-stk-sc) compare written data against read data
+  (pt-grow-stk-sc) end
+Differences in `diff -u' format:
+  (pt-grow-stk-sc) begin
+  (pt-grow-stk-sc) create "sample.txt"
+  (pt-grow-stk-sc) open "sample.txt"
+  (pt-grow-stk-sc) write "sample.txt"
+  (pt-grow-stk-sc) 2nd open "sample.txt"
+  (pt-grow-stk-sc) read "sample.txt"
+- (pt-grow-stk-sc) compare written data against read data
+- (pt-grow-stk-sc) end
+
+pintos -v -k -T 300 -m 20   --fs-disk=10 -p tests/vm/page-linear:page-linear --swap-disk=4 -- -q   -f run page-linear < /dev/null 2> tests/vm/page-linear.errors > tests/vm/page-linear.output
+perl -I../.. ../../tests/vm/page-linear.ck tests/vm/page-linear tests/vm/page-linear.result
+FAIL tests/vm/page-linear
+Kernel panic in run: PANIC at ../../lib/string.c:261 in memset(): assertion `dst != NULL || size == 0' failed.
+Call stack: 0x800421868e 0x8004217ee2 0x800421d28a 0x8004222b39 0x8004222645 0x80042224a6 0x800421da77 0x80042097a0 0x8004209bbe 0x40012e 0x400fc9 0x401012
+Translation of call stack:
+0x000000800421868e: debug_panic (lib/kernel/debug.c:32)
+0x0000008004217ee2: memset (lib/string.c:264)
+0x000000800421d28a: lazy_load_segment (userprog/process.c:910)
+0x0000008004222b39: uninit_initialize (vm/uninit.c:60 (discriminator 4))
+0x0000008004222645: vm_do_claim_page (vm/vm.c:354)
+0x00000080042224a6: vm_try_handle_fault (vm/vm.c:301)
+0x000000800421da77: page_fault (userprog/exception.c:145)
+0x00000080042097a0: intr_handler (threads/interrupt.c:352)
+0x0000008004209bbe: intr_entry (threads/intr-stubs.o:?)
+0x000000000040012e: (unknown)
+0x0000000000400fc9: (unknown)
+0x0000000000401012: (unknown)
