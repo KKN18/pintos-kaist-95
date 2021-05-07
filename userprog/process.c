@@ -868,14 +868,38 @@ lazy_load_segment (struct page *page, void *aux) {
 	anon_page->page_read_bytes = page_read_bytes;
 	anon_page->writable = writable;
 	anon_page->offset = offset;
+	// Load anon_page from container
+   if (page->type == VM_ANON)
+   {
+      struct anon_page *anon_page = &page->anon;
+      anon_page->file = file;
+      anon_page->page_read_bytes = page_read_bytes;
+      anon_page->writable = writable;
+      anon_page->offset = offset;
+   }
+	if (page->type == VM_FILE)
+	{
+		// printf("Read bytes %d\n", page_read_bytes);
+		struct file_page *file_page = &page->file;
+		file_page->file = file;
+		file_page->page_read_bytes = page_read_bytes;
+		file_page->writable = writable;
+		file_page->offset = offset;
+	}
 
 	ASSERT(file != NULL);
-    file_seek(file, offset);
+	
+	file_seek(file, offset);
+	
+	int read;
+	
+	if ((read = file_read(file, frame->kva, page_read_bytes)) != (int)page_read_bytes)
+	{
+		/* Why VM_FILE No ERROR? */
+		if (page->type == VM_ANON)
+			return false;
+	}
 
-    if (file_read(file, frame->kva, page_read_bytes) != (int)page_read_bytes)
-    {
-        return false;
-    }
     memset((frame->kva) + page_read_bytes, 0, page_zero_bytes);
 	
 	if(LOG)
@@ -884,6 +908,11 @@ lazy_load_segment (struct page *page, void *aux) {
 	}
 
 	return install_page(page->va, frame->kva, writable);
+}
+
+bool call_lazy_load_segment (struct page *page, void *aux) {
+	ASSERT(page->type == VM_FILE);
+	return lazy_load_segment(page, aux);
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
