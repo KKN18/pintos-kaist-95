@@ -1,0 +1,18 @@
+FAIL
+Kernel panic in run: PANIC at ../../devices/disk.c:212 in disk_read(): assertion `buffer != NULL' failed.
+Call stack: 0x800421868e 0x8004213dd5 0x8004220f66 0x800421ff2e 0x800421d241 0x8004222b80 0x800422268c 0x80042224ed 0x800421da77 0x80042097a0 0x8004209bbe 0x4001d3 0x400d85 0x400dce
+Translation of call stack:
+0x000000800421868e: debug_panic (lib/kernel/debug.c:32)
+0x0000008004213dd5: disk_read (devices/disk.c:214)
+0x0000008004220f66: inode_read_at (filesys/inode.c:211)
+0x000000800421ff2e: file_read (filesys/file.c:75)
+0x000000800421d241: lazy_load_segment (userprog/process.c:896)
+0x0000008004222b80: uninit_initialize (vm/uninit.c:60 (discriminator 4))
+0x000000800422268c: vm_do_claim_page (vm/vm.c:354)
+0x00000080042224ed: vm_try_handle_fault (vm/vm.c:301)
+0x000000800421da77: page_fault (userprog/exception.c:145)
+0x00000080042097a0: intr_handler (threads/interrupt.c:352)
+0x0000008004209bbe: intr_entry (threads/intr-stubs.o:?)
+0x00000000004001d3: (unknown)
+0x0000000000400d85: (unknown)
+0x0000000000400dce: (unknown)

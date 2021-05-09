@@ -1,0 +1,49 @@
+Kernel command line: -q -f put mmap-exit put child-mm-wrt run mmap-exit
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  52,377,600 loops/s.
+hd0:0: detected 337 sector (168 kB) disk, model "QEMU HARDDISK", serial "QM00001"
+hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
+hd1:0: detected 210 sector (105 kB) disk, model "QEMU HARDDISK", serial "QM00003"
+hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004"
+Formatting file system...done.
+Boot complete.
+Putting 'mmap-exit' into the file system...
+Putting 'child-mm-wrt' into the file system...
+Executing 'mmap-exit':
+(mmap-exit) begin
+(child-mm-wrt) begin
+(child-mm-wrt) create "sample.txt"
+(child-mm-wrt) open "sample.txt"
+(child-mm-wrt) mmap "sample.txt"
+(child-mm-wrt) end
+child-mm-wrt: exit(0)
+(mmap-exit) open "sample.txt" for verification
+(mmap-exit) 512 bytes read starting at offset 0 in "sample.txt" differ from expected.
+(mmap-exit) Showing first differing 64 bytes.
+(mmap-exit) Data actually read:
+0000000000000000  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
+0000000000000010  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
+0000000000000020  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
+0000000000000030  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
+(mmap-exit) Expected data:
+0000000000000000  3d 3d 3d 20 20 41 4c 4c-20 55 53 45 52 53 20 50 |===  ALL USERS P|
+0000000000000010  4c 45 41 53 45 20 4e 4f-54 45 20 20 3d 3d 3d 3d |LEASE NOTE  ====|
+0000000000000020  3d 3d 3d 3d 3d 3d 3d 3d-3d 3d 3d 3d 3d 3d 3d 3d |================|
+0000000000000030  3d 3d 3d 3d 0a 0a 43 41-52 20 61 6e 64 20 43 44 |====..CAR and CD|
+(mmap-exit) 512 bytes read starting at offset 0 in "sample.txt" differ from expected: FAILED
+mmap-exit: exit(1)
+Execution of 'mmap-exit' complete.
+Timer: 88 ticks
+Thread: 41 idle ticks, 33 kernel ticks, 14 user ticks
+hd0:0: 0 reads, 0 writes
+hd0:1: 208 reads, 472 writes
+hd1:0: 210 reads, 0 writes
+hd1:1: 0 reads, 0 writes
+Console: 2171 characters output
+Keyboard: 0 keys pressed
+Exception: 0 page faults
+Powering off...

@@ -186,9 +186,16 @@ int filesize (int fd) {
 	return ret;
 }
 
+static void not_code_segment(void *addr)
+{
+	if (0x400000 < addr && addr < 0x400000 + PGSIZE)
+		exit(-1);
+}
+
 int
 read (int fd, void *buffer, unsigned size)
 {
+	not_code_segment(buffer);
 	lock_acquire(&file_access);
 	if (fd == 0) //STDIN
 	{

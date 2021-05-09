@@ -1,0 +1,12 @@
+FAIL
+Kernel panic in run: PANIC at ../../vm/uninit.c:33 in uninit_new(): assertion `page != NULL' failed.
+Call stack: 0x800421868e 0x8004222aaa 0x8004221f7c 0x800421d4de 0x800421ce69 0x800421c238 0x800421bdaa 0x8004207656
+Translation of call stack:
+0x000000800421868e: debug_panic (lib/kernel/debug.c:32)
+0x0000008004222aaa: uninit_new (vm/uninit.c:34)
+0x0000008004221f7c: vm_alloc_page_with_initializer (vm/vm.c:117)
+0x000000800421d4de: load_segment (userprog/process.c:956)
+0x000000800421ce69: load (userprog/process.c:662)
+0x000000800421c238: process_exec (userprog/process.c:262)
+0x000000800421bdaa: initd (userprog/process.c:92)
+0x0000008004207656: kernel_thread (threads/thread.c:489)
