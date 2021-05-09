@@ -17,6 +17,7 @@ void syscall_handler (struct intr_frame *);
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/synch.h"
+#include "vm/file.h"
 /* END */
 
 /* System call.
@@ -283,8 +284,13 @@ int dup2 (int oldfd, int newfd)
 void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 	struct file *file = search_file(fd);
 	ASSERT(file != NULL);
-	return do_mmap(addr, length, writable, file, offset);
+	int8_t *res = do_mmap(addr, length, writable, file, offset);
+	if (res == NULL)
+		return MAP_FAILED;
+	return res;
 }
+
+
 
 /* END */
 
@@ -293,6 +299,7 @@ void
 syscall_handler (struct intr_frame *f) {
 	// TODO: Your implementation goes here.
 	/* Our Implementation */
+	//printf("MUNMAP : %d, syscall %d\n", SYS_MUNMAP, f->R.rax);
 	switch (f->R.rax) {
 		case SYS_HALT:
 			halt();
@@ -379,6 +386,11 @@ syscall_handler (struct intr_frame *f) {
 			assert_valid_useraddr(f->R.r8);
 			f->R.rax = call_mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
 			break;
+		case SYS_MUNMAP:
+			assert_valid_useraddr(f->R.rdi);
+			do_munmap(f->R.rdi);
+			break;
+
 		/*
 		case default:
 			printf("Unknown syscall\n");

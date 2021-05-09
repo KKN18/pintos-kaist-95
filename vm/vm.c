@@ -112,7 +112,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
-		page = palloc_get_page(PAL_USER | PAL_ZERO);
+		page = (struct page *)malloc(sizeof(struct page));
 		if (VM_TYPE(type) == VM_ANON)
 			uninit_new(page, upage, init, type, aux, anon_initializer);
 		else // VM_TYPE(type) == VM_FILE
@@ -180,6 +180,7 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 
 void
 spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
+	hash_delete(&spt->hash_table, &page->elem);
 	vm_dealloc_page (page);
 	return true;
 }
@@ -321,7 +322,7 @@ vm_claim_page (void *va UNUSED) {
 	{
 		printf("vm_claim_page on va: 0x%lx\n", va);
 	}
-	struct page *page = palloc_get_page(PAL_USER | PAL_ZERO);
+	struct page *page = (struct page *)malloc(sizeof(struct page));
 	ASSERT(page != NULL);
 	/* TODO: Fill this function */
 	page->va = va;
@@ -339,7 +340,7 @@ vm_do_claim_page (struct page *page) {
 	if (frame == NULL)
 	{
 		/* Free page in vm_claim_page */
-		palloc_free_page(page);
+		free(page);
 		return false;
 	}
 	if (page == NULL) 
@@ -365,17 +366,17 @@ static void copy_page (struct hash_elem *e, struct supplemental_page_table *dst)
 {
 	struct thread *t = thread_current();
 	struct page *page = hash_entry(e, struct page, elem);
-	struct page *newpage = palloc_get_page(PAL_USER | PAL_ZERO);
+	struct page *newpage = (struct page *)malloc(sizeof(struct page));
 	memcpy(newpage, page, sizeof(struct page));
 	// newpage->va = page->va;
 	if (newpage == NULL) {
-		palloc_free_page(newpage);
+		free(newpage);
 		PANIC("not enough memory");
 	}
 
 	/* Insert to child's spt */
 	spt_insert_page(&t->spt, newpage);
-	
+
 	/* Only allocate physical memory if loaded */
 	if(page->is_loaded)
 	{
@@ -393,7 +394,7 @@ static void kill_page (struct hash_elem *e, void *aux)
 {
 	struct page *page = hash_entry(e, struct page, elem);
 	destroy(page);
-	palloc_free_page(page);
+	free(page);
 	return;
 }
 

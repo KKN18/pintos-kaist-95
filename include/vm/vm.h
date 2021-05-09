@@ -58,7 +58,7 @@ struct page {
 	bool is_loaded;
 	enum vm_type type;
 	struct hash_elem elem;
-
+	struct list_elem mmap_elem;
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
 	union {

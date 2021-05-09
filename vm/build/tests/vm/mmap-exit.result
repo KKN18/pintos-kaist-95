@@ -1,2 +1,0 @@
-FAIL
-run: 512 bytes read starting at offset 0 in "sample.txt" differ from expected: FAILED

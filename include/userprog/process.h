@@ -16,11 +16,13 @@ bool install_page (void *upage, void *kpage, bool writable);
 bool call_lazy_load_segment (struct page *page, void *aux);
 /* END */
 
+/* Gojae */
 struct container {
     struct file *file;
     size_t page_read_bytes;
     bool writable;
     off_t offset;
 };
+
 
 #endif /* userprog/process.h */

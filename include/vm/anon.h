@@ -6,6 +6,7 @@ enum vm_type;
 typedef int32_t off_t;
 
 struct anon_page {
+    
     struct file *file;
     size_t page_read_bytes;
     bool writable;

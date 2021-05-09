@@ -339,6 +339,20 @@ process_exit (void) {
 		p = list_remove(&fi->file_elem);
 		free(fi);
 	}
+
+	struct list_elem *e;
+	
+	for (e = list_begin(&curr->mmap_list); e != list_end(&curr->mmap_list);)
+	{
+		struct mmap_file *f = list_entry (e, struct mmap_file, elem);
+		if (f != NULL)	
+		{
+			e = list_next(e);
+			do_munmap(f->va);
+		}
+		else e = list_next(e);
+	}
+
 	curr->fd = 2;
 	// ASSERT(file_deny_cnt(curr->prog_file) != 0);
 	file_close(curr->prog_file);

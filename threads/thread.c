@@ -508,6 +508,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->prog_file = NULL;
 	t->fd = 2;
 	// END
+	list_init(&t->mmap_list);
 
 #ifdef USERPROG
 
