@@ -95,6 +95,8 @@ anon_swap_in (struct page *page, void *kva) {
 
 	bitmap_set(swap_table, swap_index, true);
 	page->is_swapped = false;
+	install_page(page->va, kva, anon_page->writable);
+	printf("SWAP IN VA 0x%lx\n", page->va);
 	return true;
 }
 
@@ -102,7 +104,6 @@ anon_swap_in (struct page *page, void *kva) {
 static bool
 anon_swap_out (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
-
 	/* Is this page on user's virtual memory? */
 	// ASSERT()
 
@@ -122,6 +123,7 @@ anon_swap_out (struct page *page) {
 	bitmap_set(swap_table, swap_index, false);
 	anon_page->swap_index = swap_index;
 	page->is_swapped = true;
+	printf("Swap Out VA 0x%lx\n", page->va);
 	return true;
 }
 

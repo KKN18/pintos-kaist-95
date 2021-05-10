@@ -198,7 +198,6 @@ spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
 	vm_dealloc_page (page);
 	return true;
 }
-
 /* Get the struct frame, that will be evicted. */
 static struct frame *
 vm_get_victim (void) {
@@ -207,9 +206,15 @@ vm_get_victim (void) {
 	 /* TODO: The policy for eviction is up to you. */
 	/* WOOKAYIN */
 	size_t n = list_size(&vm_frames);
+
 	for(int i = 0; i < 2*n; i++)
 	{
+		
 		victim = clock_frame_next();
+		if (victim->page->type == VM_MARKER_0)
+		{
+			victim = clock_frame_next();
+		}
 		t = thread_get_by_id(victim->tid);
 		if(pml4_is_accessed(t->pml4, victim->kva))
 			pml4_set_accessed(t->pml4, victim->kva, false);
@@ -224,10 +229,11 @@ vm_get_victim (void) {
 static struct frame *
 vm_evict_frame (void) {
 	struct frame *victim UNUSED = vm_get_victim ();
+
 	struct thread *t = thread_get_by_id(victim->tid);
 	/* TODO: swap out the victim and return the evicted frame. */
 	ASSERT(victim != NULL && t != NULL);
-	pml4_clear_page(t->pml4, victim->kva);
+	pml4_clear_page(t->pml4, victim->page->va);
 
 	bool is_dirty = false;
 	is_dirty = pml4_is_dirty(t->pml4, victim->kva);
@@ -236,6 +242,8 @@ vm_evict_frame (void) {
 	// If VM_FILE and dirty, do something.
 
 	// Call swap_out
+	// printf("VA 0x%lx KVA 0x%lx\n", victim->page->va, victim->kva);
+	ASSERT(victim->page->type == VM_ANON);
 	swap_out(victim->page);
 	return victim;
 }
@@ -247,10 +255,16 @@ clock_frame_next(void)
 	if (list_empty(&vm_frames))
 		PANIC("Frame table is empty, can't happen - there is a leak somewhere");
 
-	if (clock_ptr == NULL || clock_ptr == list_end(&vm_frames))
-		clock_ptr = list_begin (&vm_frames);
+	if (clock_ptr == NULL || clock_ptr == list_back(&vm_frames))
+	{
+		clock_ptr = list_front (&vm_frames);
+	}
 	else
+	{
 		clock_ptr = list_next (clock_ptr);
+		// printf("In cycle\n");
+	}
+		
 
 	struct frame *e = list_entry(clock_ptr, struct frame, elem);
 	return e;
@@ -285,14 +299,14 @@ vm_get_frame (void) {
 	}
 	else
 	{
+		printf("evitced\n");
 		free(frame);
 		frame = vm_evict_frame();
 		frame->tid = thread_current()->tid;
-		ASSERT(0);
 		// PANIC ("todo");
 	}
 	ASSERT (frame != NULL);
-	ASSERT (frame->page == NULL);
+	// ASSERT (frame->page == NULL);
 	return frame;
 }
 
@@ -325,8 +339,19 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	/* Page fault is TRUE page fault */
+	printf("\nFault Addr 0x%lx\n", pg_round_down(addr));
   	if (addr == NULL || !not_present || !is_user_vaddr(addr))
 	{
+		struct frame *target;
+		size_t n = list_size(&vm_frames);
+		printf("	DEBUG addr 0x%lx\n", addr);
+		// for(int i = 0; i < n; i++)
+		// {
+		// 	target = clock_frame_next();
+		// 	if (addr == target->kva)
+		// 		printf("VA 0x%lx KVA 0x%lx\n", target->page->va, target->kva);
+		// }
+
 		exit(-1);
 	}
 
@@ -339,8 +364,8 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 
 	page = spt_find_page(spt, pg_round_down(addr));
 	
-	if(page->is_swapped == true)
-		PANIC("Implement swap");
+	// if(page->is_swapped == true)
+	// 	PANIC("Implement swap");
 
 	if(page == NULL)
 	{
@@ -366,11 +391,8 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 
 	bool res = false;
 	
-	if(VM_TYPE(page->type) == VM_UNINIT)
-		res = vm_do_claim_page(page);
-
-	if(VM_TYPE(page->type) == VM_ANON)
-		res = swap_in(page, page->kva);
+	res = vm_do_claim_page(page);
+	printf("Res %d\n", res);
 	if(res)
 		page->is_loaded = true;
 
