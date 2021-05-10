@@ -9,6 +9,7 @@
 #include "threads/vaddr.h"
 #include "userprog/process.h"
 #include "threads/mmu.h"
+#include "threads/thread.h"
 #define LOG 0
 
 #include "lib/kernel/hash.h"
@@ -202,14 +203,20 @@ spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
 static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
+	struct thread *t;
 	 /* TODO: The policy for eviction is up to you. */
 	/* WOOKAYIN */
-	return NULL;
-	for(int i = 0; ; i++)
+	size_t n = list_size(&vm_frames);
+	for(int i = 0; i < 2*n; i++)
 	{
 		victim = clock_frame_next();
+		t = thread_get_by_id(victim->tid);
+		if(pml4_is_accessed(t->pml4, victim->kva))
+			pml4_set_accessed(t->pml4, victim->kva, false);
+		else
+			break;
 	}
-	
+	return victim;
 }
 
 /* Evict one page and return the corresponding frame.
@@ -217,9 +224,17 @@ vm_get_victim (void) {
 static struct frame *
 vm_evict_frame (void) {
 	struct frame *victim UNUSED = vm_get_victim ();
+	struct thread *t = thread_get_by_id(victim->tid);
 	/* TODO: swap out the victim and return the evicted frame. */
-	/* WOOKAYIN */
-	return NULL;
+	ASSERT(victim != NULL && t != NULL);
+	pml4_clear_page(t->pml4, victim->kva);
+
+	bool is_dirty = false;
+	is_dirty = pml4_is_dirty(t->pml4, victim->kva);
+
+	// Call swap_out
+	swap_out(victim->page);
+	return victim;
 }
 
 /* Our Implementation */

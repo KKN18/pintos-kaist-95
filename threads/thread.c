@@ -977,5 +977,23 @@ void update_all_mlfqs (void) {
    if (!list_empty(&ready_list))
       list_sort(&ready_list, less_thread_priority, NULL);
 }
+
+/* Our Implementation */
+// Get thread by tid
+struct thread
+*thread_get_by_id (tid_t id)
+{
+  ASSERT (id != TID_ERROR);
+  struct list_elem *e;
+  struct thread *t;
+  e = list_tail (&all_list);
+  while ((e = list_prev (e)) != list_head (&all_list))
+    {
+      t = list_entry (e, struct thread, allelem);
+      if (t->tid == id && t->status != THREAD_DYING)
+        return t;
+    }
+  return NULL;
+}
 /* END */
 
