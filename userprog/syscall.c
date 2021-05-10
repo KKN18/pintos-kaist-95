@@ -282,14 +282,15 @@ int dup2 (int oldfd, int newfd)
 */
 
 void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
-	struct file *file = search_file(fd);
-	ASSERT(file != NULL);
-	int8_t *res = do_mmap(addr, length, writable, file, offset);
-	if (res == NULL)
-		return MAP_FAILED;
-	return res;
+   if (!is_user_vaddr(addr) || !is_user_vaddr(length) || !is_user_vaddr(writable) || !is_user_vaddr(fd) || !is_user_vaddr(offset))
+      return NULL;
+   if (fd == 0 || fd == 1)
+      return NULL;
+   struct file *file = search_file(fd);
+   if (file == NULL)
+      return NULL;
+   return do_mmap(addr, length, writable, file, offset);
 }
-
 
 
 /* END */
@@ -379,13 +380,8 @@ syscall_handler (struct intr_frame *f) {
 			close(f->R.rdi);
 			break;
 		case SYS_MMAP:
-			assert_valid_useraddr(f->R.rdi);
-			assert_valid_useraddr(f->R.rsi);
-			assert_valid_useraddr(f->R.rdx);
-			assert_valid_useraddr(f->R.r10);
-			assert_valid_useraddr(f->R.r8);
-			f->R.rax = call_mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
-			break;
+         	f->R.rax = call_mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+         	break;
 		case SYS_MUNMAP:
 			assert_valid_useraddr(f->R.rdi);
 			do_munmap(f->R.rdi);
