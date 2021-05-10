@@ -59,6 +59,8 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 /* Our Implementation */
+static struct list all_list;
+
 static int thread_get_max_priority (void);
 static int64_t first_wake_tick = INT64_MAX;
 bool less_thread_sleep(const struct list_elem *a,
@@ -123,6 +125,7 @@ thread_init (void) {
 	/* Our Implementation */
 	list_init (&sleep_list);
 	list_init (&destruction_req);
+	list_init (&all_list);
 	load_avg = 0;
 	/* END */
 
@@ -342,6 +345,7 @@ thread_exit (void) {
 	/* Just set our status to dying and schedule another process.
 	   We will be destroyed during the call to schedule_tail(). */
 	intr_disable ();
+	list_remove(&thread_current()->allelem);
 	do_schedule (THREAD_DYING);
 	NOT_REACHED ();
 }
@@ -499,6 +503,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	ASSERT (name != NULL);
 
 	memset (t, 0, sizeof *t);
+	enum intr_level old_level;
+
 	t->status = THREAD_BLOCKED;
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
@@ -509,6 +515,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->fd = 2;
 	// END
 	list_init(&t->mmap_list);
+
+	old_level = intr_disable();
+	list_push_back(&all_list, &t->allelem);
+	intr_set_level(old_level);
 
 #ifdef USERPROG
 

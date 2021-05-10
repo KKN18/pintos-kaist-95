@@ -95,6 +95,7 @@ struct thread {
 	int priority;                       /* Priority. */
 
 	/* Our Implementation */
+	struct list_elem allelem;
 	int64_t wake_tick;
 	int base_priority;
 	struct lock *wait_on_lock;

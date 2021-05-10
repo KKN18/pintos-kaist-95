@@ -15,7 +15,13 @@
 #define list_elem_to_hash_elem(LIST_ELEM)                       \
    list_entry(LIST_ELEM, struct hash_elem, list_elem)
 
-struct list vm_frames;
+/* For synchronization */
+static struct lock vm_lock;
+static struct lock eviction_lock;
+
+/* Frame list */
+static struct list vm_frames;
+static struct list_elem *clock_ptr;
 /* END */
 
 /* Our Implementation */
@@ -76,6 +82,7 @@ vm_init (void) {
 	list_init (&vm_frames);
 	lock_init (&vm_lock);
 	lock_init (&eviction_lock);
+	clock_ptr = NULL;
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -96,6 +103,10 @@ page_get_type (struct page *page) {
 static struct frame *vm_get_victim (void);
 static bool vm_do_claim_page (struct page *page);
 static struct frame *vm_evict_frame (void);
+
+/* Our Implementation */
+// WOOKAYIN
+static struct frame *clock_frame_next(void);
 
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
@@ -192,7 +203,13 @@ static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
-	return victim;
+	/* WOOKAYIN */
+	return NULL;
+	for(int i = 0; ; i++)
+	{
+		victim = clock_frame_next();
+	}
+	
 }
 
 /* Evict one page and return the corresponding frame.
@@ -201,8 +218,24 @@ static struct frame *
 vm_evict_frame (void) {
 	struct frame *victim UNUSED = vm_get_victim ();
 	/* TODO: swap out the victim and return the evicted frame. */
-
+	/* WOOKAYIN */
 	return NULL;
+}
+
+/* Our Implementation */
+static struct frame * 
+clock_frame_next(void)
+{
+	if (list_empty(&vm_frames))
+		PANIC("Frame table is empty, can't happen - there is a leak somewhere");
+
+	if (clock_ptr == NULL || clock_ptr == list_end(&vm_frames))
+		clock_ptr = list_begin (&vm_frames);
+	else
+		clock_ptr = list_next (clock_ptr);
+
+	struct frame *e = list_entry(clock_ptr, struct frame, elem);
+	return e;
 }
 
 /* palloc() and get frame. If there is no available page, evict the page

@@ -71,8 +71,6 @@ struct page {
 	};
 };
 
-struct list vm_frames;
-
 /* The representation of "frame" */
 struct frame {
 	void *kva;
