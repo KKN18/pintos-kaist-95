@@ -11,6 +11,7 @@ struct anon_page {
     bool writable;
     off_t offset;
     disk_sector_t swap_index;
+    // bool swapped;
 };
 
 void vm_anon_init (void);

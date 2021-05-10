@@ -90,10 +90,12 @@ anon_swap_in (struct page *page, void *kva) {
 	size_t i;
 	for(i = 0; i < DISK_SECTOR_SIZE; i++) {
 		disk_read(swap_disk, swap_index * DISK_SECTOR_SIZE + i,
-						(page->frame->kva) + (DISK_SECTOR_SIZE * i));
+									kva + (DISK_SECTOR_SIZE * i));
 	}
 
-	return false;
+	bitmap_set(swap_table, swap_index, true);
+	page->is_swapped = false;
+	return true;
 }
 
 /* Swap out the page by writing contents to the swap disk. */
@@ -119,7 +121,7 @@ anon_swap_out (struct page *page) {
 
 	bitmap_set(swap_table, swap_index, false);
 	anon_page->swap_index = swap_index;
-
+	page->is_swapped = true;
 	return true;
 }
 

@@ -227,7 +227,6 @@ vm_evict_frame (void) {
 	struct thread *t = thread_get_by_id(victim->tid);
 	/* TODO: swap out the victim and return the evicted frame. */
 	ASSERT(victim != NULL && t != NULL);
-	// list_remove
 	pml4_clear_page(t->pml4, victim->kva);
 
 	bool is_dirty = false;
@@ -269,11 +268,12 @@ vm_get_frame (void) {
 	}
 	/* TODO: Fill this function. */
 	/* Eviction is not considered yet. */
-	uint8_t *kva = palloc_get_page (PAL_USER | PAL_ZERO);
 	struct frame *frame = calloc(1, sizeof *frame);
-
+	
 	if(frame == NULL)
 		PANIC("Calloc failed");
+	
+	uint8_t *kva = palloc_get_page (PAL_USER | PAL_ZERO);
 	
 	if (kva != NULL)
 	{
@@ -285,8 +285,11 @@ vm_get_frame (void) {
 	}
 	else
 	{
-		palloc_free_page(frame);
-		PANIC ("todo");
+		free(frame);
+		frame = vm_evict_frame();
+		frame->tid = thread_current()->tid;
+		ASSERT(0);
+		// PANIC ("todo");
 	}
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
@@ -336,6 +339,9 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 
 	page = spt_find_page(spt, pg_round_down(addr));
 	
+	if(page->is_swapped == true)
+		PANIC("Implement swap");
+
 	if(page == NULL)
 	{
 		if (addr < USER_STACK && addr > USER_STACK - (1 << 20))
@@ -346,6 +352,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 				return true;
 			}
 		}
+		ASSERT(0);
 		exit(-1);
 	}
 	
@@ -357,8 +364,13 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 			printf("	Not found in spt\n");
 	}
 
-	bool res = vm_do_claim_page(page);
+	bool res = false;
+	
+	if(VM_TYPE(page->type) == VM_UNINIT)
+		res = vm_do_claim_page(page);
 
+	if(VM_TYPE(page->type) == VM_ANON)
+		res = swap_in(page, page->kva);
 	if(res)
 		page->is_loaded = true;
 

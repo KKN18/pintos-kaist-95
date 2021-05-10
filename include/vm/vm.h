@@ -55,6 +55,8 @@ struct page {
 	enum vm_type type;
 	struct hash_elem elem;
 	struct list_elem mmap_elem;
+
+	bool is_swapped;
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
 	union {
