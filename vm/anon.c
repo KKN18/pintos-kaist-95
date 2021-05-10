@@ -2,6 +2,7 @@
 
 #include "vm/vm.h"
 #include "devices/disk.h"
+#include <bitmap.h>
 #define LOG 0
 
 /* DO NOT MODIFY BELOW LINE */
@@ -18,11 +19,25 @@ static const struct page_operations anon_ops = {
 	.type = VM_ANON,
 };
 
+/* CODYJACK */
+/* Bitmap of swap slot availablities and corresponding lock */
+static struct bitmap *swap_table;
+
 /* Initialize the data for anonymous pages */
 void
 vm_anon_init (void) {
 	/* TODO: Set up the swap_disk. */
-	swap_disk = NULL;
+	swap_disk = disk_get(1, 1);
+	if(swap_disk == NULL)
+		PANIC("no swap disk");
+
+	swap_table = bitmap_create(disk_size(swap_disk) / DISK_SECTOR_SIZE);
+	if(swap_table == NULL)
+		PANIC("no swap table");
+	
+
+	bitmap_set_all(swap_table, true);
+
 	return;
 }
 
@@ -47,6 +62,9 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	anon_page->page_read_bytes = 0;
 	anon_page->writable = true;
 	anon_page->offset = 0;
+
+	// For swap
+	anon_page->swap_index = -1;
 	/* END */
 
 	/* What is the return value? */
@@ -57,6 +75,24 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 static bool
 anon_swap_in (struct page *page, void *kva) {
 	struct anon_page *anon_page = &page->anon;
+
+	/* Is this page on user's virtual memory? */
+	// ASSERT()
+
+	disk_sector_t swap_index = anon_page->swap_index;
+
+	// Check the swap region
+	if(bitmap_test(swap_table, swap_index) == true) {
+		// Still avaliable slot, error
+		PANIC("Error, invalid read access to unassigned swap block");
+	}
+
+	size_t i;
+	for(i = 0; i < DISK_SECTOR_SIZE; i++) {
+		disk_read(swap_disk, swap_index * DISK_SECTOR_SIZE + i,
+						(page->frame->kva) + (DISK_SECTOR_SIZE * i));
+	}
+
 	return false;
 }
 
@@ -64,7 +100,27 @@ anon_swap_in (struct page *page, void *kva) {
 static bool
 anon_swap_out (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
-	return false;
+
+	/* Is this page on user's virtual memory? */
+	// ASSERT()
+
+	disk_sector_t swap_index = bitmap_scan(swap_table, 0, 1, true);
+
+	if(swap_index == BITMAP_ERROR)
+	{
+		PANIC("No more swap slot");
+	}
+
+	size_t i;
+	for(i = 0; i < DISK_SECTOR_SIZE; i++) {
+		disk_write(swap_disk, swap_index * DISK_SECTOR_SIZE + i,
+						(page->frame->kva) + (DISK_SECTOR_SIZE * i));
+	}
+
+	bitmap_set(swap_table, swap_index, false);
+	anon_page->swap_index = swap_index;
+
+	return true;
 }
 
 /* Destroy the anonymous page. PAGE will be freed by the caller. */
