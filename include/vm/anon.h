@@ -1,16 +1,17 @@
 #ifndef VM_ANON_H
 #define VM_ANON_H
 #include "vm/vm.h"
+#include "devices/disk.h"
 struct page;
 enum vm_type;
 typedef int32_t off_t;
 
 struct anon_page {
-    
     struct file *file;
     size_t page_read_bytes;
     bool writable;
     off_t offset;
+    disk_sector_t swap_index;
 };
 
 void vm_anon_init (void);

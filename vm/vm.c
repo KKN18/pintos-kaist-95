@@ -14,6 +14,8 @@
 #include "lib/kernel/hash.h"
 #define list_elem_to_hash_elem(LIST_ELEM)                       \
    list_entry(LIST_ELEM, struct hash_elem, list_elem)
+
+struct list vm_frames;
 /* END */
 
 /* Our Implementation */
