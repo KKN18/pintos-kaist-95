@@ -227,10 +227,12 @@ vm_evict_frame (void) {
 	struct thread *t = thread_get_by_id(victim->tid);
 	/* TODO: swap out the victim and return the evicted frame. */
 	ASSERT(victim != NULL && t != NULL);
+	// list_remove
 	pml4_clear_page(t->pml4, victim->kva);
 
 	bool is_dirty = false;
 	is_dirty = pml4_is_dirty(t->pml4, victim->kva);
+
 	// If VM_FILE and not dirty, do nothing.
 	// If VM_FILE and dirty, do something.
 
@@ -269,7 +271,11 @@ vm_get_frame (void) {
 	/* Eviction is not considered yet. */
 	uint8_t *kva = palloc_get_page (PAL_USER | PAL_ZERO);
 	struct frame *frame = calloc(1, sizeof *frame);
-	if (frame != NULL)
+
+	if(frame == NULL)
+		PANIC("Calloc failed");
+	
+	if (kva != NULL)
 	{
 		frame->kva = kva;
 		frame->tid = thread_current()->tid;

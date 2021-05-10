@@ -11,7 +11,6 @@ struct file_page {
 	size_t page_read_bytes;
 	bool writable;
 	off_t offset;
-	
 };
 
 /* Ryu */

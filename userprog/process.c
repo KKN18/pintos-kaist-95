@@ -878,7 +878,6 @@ lazy_load_segment (struct page *page, void *aux) {
 
 	// Load anon_page from container
 	struct anon_page *anon_page = &page->anon;
-	anon_page->file = file;
 	anon_page->page_read_bytes = page_read_bytes;
 	anon_page->writable = writable;
 	anon_page->offset = offset;
@@ -886,7 +885,6 @@ lazy_load_segment (struct page *page, void *aux) {
    if (page->type == VM_ANON)
    {
       struct anon_page *anon_page = &page->anon;
-      anon_page->file = file;
       anon_page->page_read_bytes = page_read_bytes;
       anon_page->writable = writable;
       anon_page->offset = offset;
