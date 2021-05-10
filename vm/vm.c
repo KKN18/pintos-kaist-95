@@ -231,6 +231,8 @@ vm_evict_frame (void) {
 
 	bool is_dirty = false;
 	is_dirty = pml4_is_dirty(t->pml4, victim->kva);
+	// If VM_FILE and not dirty, do nothing.
+	// If VM_FILE and dirty, do something.
 
 	// Call swap_out
 	swap_out(victim->page);

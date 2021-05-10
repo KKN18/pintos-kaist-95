@@ -981,7 +981,7 @@ void update_all_mlfqs (void) {
 /* Our Implementation */
 // Get thread by tid
 struct thread
-*thread_get_by_id (tid_t id)
+*thread_get_by_id (int32_t id)
 {
   ASSERT (id != TID_ERROR);
   struct list_elem *e;

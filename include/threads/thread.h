@@ -178,7 +178,7 @@ void update_mlfqs_recent_cpu (struct thread *t);
 void update_mlfqs_load_avg (void);
 void thread_increment_recent_cpu (void);
 void update_all_mlfqs (void);
-struct thread *thread_get_by_id (tid_t id)
+struct thread *thread_get_by_id (tid_t id);
 /* END */
 
 void do_iret (struct intr_frame *tf);
