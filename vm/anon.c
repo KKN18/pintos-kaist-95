@@ -3,6 +3,7 @@
 #include "vm/vm.h"
 #include "devices/disk.h"
 #include <bitmap.h>
+#include "threads/mmu.h"
 #define LOG 0
 
 /* DO NOT MODIFY BELOW LINE */
@@ -22,6 +23,8 @@ static const struct page_operations anon_ops = {
 /* CODYJACK */
 /* Bitmap of swap slot availablities and corresponding lock */
 static struct bitmap *swap_table;
+static const size_t SECTORS_PER_PAGE = PGSIZE / DISK_SECTOR_SIZE;
+
 
 /* Initialize the data for anonymous pages */
 void
@@ -31,7 +34,7 @@ vm_anon_init (void) {
 	if(swap_disk == NULL)
 		PANIC("no swap disk");
 
-	swap_table = bitmap_create(disk_size(swap_disk) / DISK_SECTOR_SIZE);
+	swap_table = bitmap_create(disk_size(swap_disk) / SECTORS_PER_PAGE);
 	if(swap_table == NULL)
 		PANIC("no swap table");
 
@@ -87,15 +90,15 @@ anon_swap_in (struct page *page, void *kva) {
 	}
 
 	size_t i;
-	for(i = 0; i < DISK_SECTOR_SIZE; i++) {
-		disk_read(swap_disk, swap_index * DISK_SECTOR_SIZE + i,
-									page->va + (DISK_SECTOR_SIZE * i));
+	for(i = 0; i < SECTORS_PER_PAGE; i++) {
+		disk_read(swap_disk, swap_index * SECTORS_PER_PAGE + i,
+									kva + (DISK_SECTOR_SIZE * i));
 	}
 
 	bitmap_set(swap_table, swap_index, true);
 	page->is_swapped = false;
 	install_page(page->va, kva, anon_page->writable);
-	printf("SWAP IN VA 0x%lx\n", page->va);
+	// printf("SWAP IN VA 0x%lx\n", page->va);
 	return true;
 }
 
@@ -111,17 +114,17 @@ anon_swap_out (struct page *page) {
 		PANIC("No more swap slot");
 	}
 	size_t i;
-	for(i = 0; i < DISK_SECTOR_SIZE; i++) {
-		disk_write(swap_disk, swap_index * DISK_SECTOR_SIZE + i,
-						(page->va) + (DISK_SECTOR_SIZE * i));
-		if (i>400)
-			printf("i=%d\n", i);
+	// printf("swap_table %d\n", disk_size(swap_disk) / DISK_SECTOR_SIZE);
+	// printf("swap_index %d\n", swap_index);
+	// printf("KVA 0x%lx\n", page->frame->kva);
+	for(i = 0; i < SECTORS_PER_PAGE; i++) {
+		disk_write(swap_disk, swap_index * (SECTORS_PER_PAGE) + i,
+						(page->frame->kva) + (DISK_SECTOR_SIZE * i));
 	}
-	printf("here\n");
 	bitmap_set(swap_table, swap_index, false);
 	anon_page->swap_index = swap_index;
 	page->is_swapped = true;
-	printf("Swap Out VA 0x%lx\n", page->va);
+	// printf("Swap Out VA 0x%lx\n", page->va);
 	return true;
 }
 

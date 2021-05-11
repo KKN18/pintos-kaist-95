@@ -221,7 +221,7 @@ vm_get_victim (void) {
 		else
 			break;
 	}
-	printf("Got victim VA 0x%lx\n", victim->page->va);
+	// printf("Got victim VA 0x%lx\n", victim->page->va);
 	return victim;
 }
 
@@ -243,6 +243,7 @@ vm_evict_frame (void) {
 	// printf("VA 0x%lx KVA 0x%lx\n", victim->page->va, victim->kva);
 	ASSERT(victim->page->type == VM_ANON);
 	lock_acquire(&eviction_lock);
+	// printf("here\n");
 	swap_out(victim->page);
 	lock_release(&eviction_lock);
 	return victim;
@@ -301,7 +302,7 @@ vm_get_frame (void) {
 	{
 		free(frame);
 		frame = vm_evict_frame();
-		printf("evitced\n");
+		// printf("evitced\n");
 		frame->tid = thread_current()->tid;
 		// PANIC ("todo");
 	}
@@ -339,19 +340,9 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	/* Page fault is TRUE page fault */
-	printf("\nFault Addr 0x%lx\n", pg_round_down(addr));
+	// printf("\nFault Addr 0x%lx\n", pg_round_down(addr));
   	if (addr == NULL || !not_present || !is_user_vaddr(addr))
 	{
-		struct frame *target;
-		size_t n = list_size(&vm_frames);
-		printf("	DEBUG addr 0x%lx\n", addr);
-		// for(int i = 0; i < n; i++)
-		// {
-		// 	target = clock_frame_next();
-		// 	if (addr == target->kva)
-		// 		printf("VA 0x%lx KVA 0x%lx\n", target->page->va, target->kva);
-		// }
-
 		exit(-1);
 	}
 
@@ -377,7 +368,6 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 				return true;
 			}
 		}
-		ASSERT(0);
 		exit(-1);
 	}
 	
@@ -392,7 +382,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	bool res = false;
 	
 	res = vm_do_claim_page(page);
-	printf("Res %d\n", res);
+	// printf("Res %d\n", res);
 	if(res)
 		page->is_loaded = true;
 
