@@ -221,6 +221,7 @@ vm_get_victim (void) {
 		else
 			break;
 	}
+	printf("Got victim VA 0x%lx\n", victim->page->va);
 	return victim;
 }
 
@@ -229,22 +230,21 @@ vm_get_victim (void) {
 static struct frame *
 vm_evict_frame (void) {
 	struct frame *victim UNUSED = vm_get_victim ();
-
 	struct thread *t = thread_get_by_id(victim->tid);
 	/* TODO: swap out the victim and return the evicted frame. */
 	ASSERT(victim != NULL && t != NULL);
 	pml4_clear_page(t->pml4, victim->page->va);
-
 	bool is_dirty = false;
 	is_dirty = pml4_is_dirty(t->pml4, victim->kva);
-
 	// If VM_FILE and not dirty, do nothing.
 	// If VM_FILE and dirty, do something.
 
 	// Call swap_out
 	// printf("VA 0x%lx KVA 0x%lx\n", victim->page->va, victim->kva);
 	ASSERT(victim->page->type == VM_ANON);
+	lock_acquire(&eviction_lock);
 	swap_out(victim->page);
+	lock_release(&eviction_lock);
 	return victim;
 }
 
@@ -299,9 +299,9 @@ vm_get_frame (void) {
 	}
 	else
 	{
-		printf("evitced\n");
 		free(frame);
 		frame = vm_evict_frame();
+		printf("evitced\n");
 		frame->tid = thread_current()->tid;
 		// PANIC ("todo");
 	}

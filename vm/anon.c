@@ -34,10 +34,9 @@ vm_anon_init (void) {
 	swap_table = bitmap_create(disk_size(swap_disk) / DISK_SECTOR_SIZE);
 	if(swap_table == NULL)
 		PANIC("no swap table");
-	
+
 
 	bitmap_set_all(swap_table, true);
-
 	return;
 }
 
@@ -90,7 +89,7 @@ anon_swap_in (struct page *page, void *kva) {
 	size_t i;
 	for(i = 0; i < DISK_SECTOR_SIZE; i++) {
 		disk_read(swap_disk, swap_index * DISK_SECTOR_SIZE + i,
-									kva + (DISK_SECTOR_SIZE * i));
+									page->va + (DISK_SECTOR_SIZE * i));
 	}
 
 	bitmap_set(swap_table, swap_index, true);
@@ -106,20 +105,19 @@ anon_swap_out (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
 	/* Is this page on user's virtual memory? */
 	// ASSERT()
-
 	disk_sector_t swap_index = bitmap_scan(swap_table, 0, 1, true);
-
 	if(swap_index == BITMAP_ERROR)
 	{
 		PANIC("No more swap slot");
 	}
-
 	size_t i;
 	for(i = 0; i < DISK_SECTOR_SIZE; i++) {
 		disk_write(swap_disk, swap_index * DISK_SECTOR_SIZE + i,
-						(page->frame->kva) + (DISK_SECTOR_SIZE * i));
+						(page->va) + (DISK_SECTOR_SIZE * i));
+		if (i>400)
+			printf("i=%d\n", i);
 	}
-
+	printf("here\n");
 	bitmap_set(swap_table, swap_index, false);
 	anon_page->swap_index = swap_index;
 	page->is_swapped = true;
