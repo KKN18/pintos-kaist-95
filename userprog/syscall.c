@@ -18,6 +18,7 @@ void syscall_handler (struct intr_frame *);
 #include "filesys/filesys.h"
 #include "threads/synch.h"
 #include "vm/file.h"
+#include "vm/vm.h"
 /* END */
 
 /* System call.
@@ -99,8 +100,23 @@ void delete_file (int fd) {
 }
 /* End for functions used in file related syscalls */
 
-void assert_valid_useraddr(const void *vaddr) {
-   if (!is_user_vaddr(vaddr))  exit(-1);
+void assert_valid_useraddr(const void *vaddr, void *rsp) {
+	if (!is_user_vaddr(vaddr))  
+		exit(-1);
+	
+	// For tests/vm/pt-grow-stk-sc
+	/*
+	if(spt_find_page(&thread_current()->spt, pg_round_down(vaddr)))
+	{
+		if (vaddr < USER_STACK && vaddr > USER_STACK - (1 << 20))
+		{
+			if (rsp == vaddr + 8 || vaddr > rsp)
+			{
+				vm_stack_growth(pg_round_down(vaddr));
+			}
+		}
+	}
+	*/
 }
 
 /* Start of syscall functions used in syscall handler */
@@ -218,6 +234,7 @@ read (int fd, void *buffer, unsigned size)
 			lock_release(&file_access);
 			return -1;
 		}
+
 		int iRead = file_read(file, buffer, size); // from file.h
 		lock_release (&file_access);
 		return iRead;
@@ -306,11 +323,11 @@ syscall_handler (struct intr_frame *f) {
 			halt();
 			break;
 		case SYS_EXIT:
-			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
 			exit(f->R.rdi);
 			break;
 		case SYS_FORK:
-			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
 			/* For sys_fork() only */
 			struct thread_and_if *tif = malloc(sizeof(struct thread_and_if));
 			if (tif == NULL) 
@@ -331,59 +348,67 @@ syscall_handler (struct intr_frame *f) {
 			f->R.rax = sys_fork(f->R.rdi, tif);
 			break;
 		case SYS_EXEC:
-			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
 			f->R.rax = exec(f->R.rdi);
 			break;
 		case SYS_WAIT:
-			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
 			f->R.rax = wait(f->R.rdi);
 			break;
 		case SYS_CREATE:
-			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
 			f->R.rax = create(f->R.rdi, f->R.rsi);
 			break;
 		case SYS_REMOVE:
-			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
 			f->R.rax = remove(f->R.rdi);
 			break;
 		case SYS_OPEN:
-			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
 			f->R.rax = open(f->R.rdi);
 			break;
 		case SYS_FILESIZE:
-			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
 			f->R.rax = filesize(f->R.rdi);
 			break;
 		case SYS_READ:
-			assert_valid_useraddr(f->R.rdi);
-			assert_valid_useraddr(f->R.rsi);
-			assert_valid_useraddr(f->R.rdx);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
+			assert_valid_useraddr(f->R.rsi, f->rsp);
+			assert_valid_useraddr(f->R.rdx, f->rsp);
+			// For tests/vm/pt-grow-stk-sc
+			/* 
+			void *va = pg_round_down(f->R.rsi);
+			for(va; va < f->R.rsi + f->R.rdx; va += PGSIZE)
+			{
+				assert_valid_useraddr(va, f->rsp);
+			}
+			*/
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_WRITE:
-			assert_valid_useraddr(f->R.rdi);
-			assert_valid_useraddr(f->R.rsi);
-			assert_valid_useraddr(f->R.rdx);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
+			assert_valid_useraddr(f->R.rsi, f->rsp);
+			assert_valid_useraddr(f->R.rdx, f->rsp);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_SEEK:
-			assert_valid_useraddr(f->R.rdi);
-			assert_valid_useraddr(f->R.rsi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
+			assert_valid_useraddr(f->R.rsi, f->rsp);
 			seek(f->R.rdi, f->R.rsi);
 			break;
 		case SYS_TELL:
-			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
 			f->R.rax = tell(f->R.rdi);
 			break;
 		case SYS_CLOSE:
-			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
 			close(f->R.rdi);
 			break;
 		case SYS_MMAP:
          	f->R.rax = call_mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
          	break;
 		case SYS_MUNMAP:
-			assert_valid_useraddr(f->R.rdi);
+			assert_valid_useraddr(f->R.rdi, f->rsp);
 			do_munmap(f->R.rdi);
 			break;
 

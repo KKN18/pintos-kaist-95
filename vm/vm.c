@@ -182,7 +182,7 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		return succ;
 	
 	// ASSERT (pg_ofs (page->va) == 0);
-	ASSERT (spt_find_page(spt, page->va) == NULL);
+	// ASSERT (spt_find_page(spt, page->va) == NULL);
 	result = hash_insert(&spt->hash_table, &page->elem);
 	if (result != NULL)
 		return succ;
@@ -312,7 +312,7 @@ vm_get_frame (void) {
 }
 
 /* Growing the stack. */
-static void
+void
 vm_stack_growth (void *addr UNUSED) {
 	struct thread *t = thread_current();
 	if(vm_claim_page(pg_round_down(addr)))
