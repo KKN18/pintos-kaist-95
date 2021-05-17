@@ -19,7 +19,7 @@
 /* For synchronization */
 static struct lock vm_lock;
 static struct lock eviction_lock;
-
+static struct lock copy_lock;
 /* Frame list */
 static struct list vm_frames;
 static struct list_elem *clock_ptr;
@@ -83,6 +83,7 @@ vm_init (void) {
 	list_init (&vm_frames);
 	lock_init (&vm_lock);
 	lock_init (&eviction_lock);
+	lock_init (&copy_lock);
 	clock_ptr = NULL;
 }
 
@@ -241,7 +242,6 @@ vm_evict_frame (void) {
 
 	// Call swap_out
 	// printf("VA 0x%lx KVA 0x%lx\n", victim->page->va, victim->kva);
-	ASSERT(victim->page->type == VM_ANON);
 	lock_acquire(&eviction_lock);
 	// printf("here\n");
 	swap_out(victim->page);
@@ -446,6 +446,7 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 /* CODYJACK */
 static void copy_page (struct hash_elem *e, struct supplemental_page_table *dst)
 {
+	// lock_acquire(&copy_lock);
 	struct thread *t = thread_current();
 	struct page *page = hash_entry(e, struct page, elem);
 	struct page *newpage = (struct page *)malloc(sizeof(struct page));
@@ -455,20 +456,18 @@ static void copy_page (struct hash_elem *e, struct supplemental_page_table *dst)
 		free(newpage);
 		PANIC("not enough memory");
 	}
-
+	ASSERT(page != NULL);
 	/* Insert to child's spt */
-	spt_insert_page(&t->spt, newpage);
-
 	/* Only allocate physical memory if loaded */
+	spt_insert_page(dst, newpage);
+	newpage->operations = &page_op;
+	vm_do_claim_page(newpage);
 	if(page->is_loaded)
 	{
-		/* For calling add map */
-		newpage->operations = &page_op;
-		vm_do_claim_page(newpage);
-
 		/* Copy physical memory */
 		memcpy(newpage->frame->kva, page->frame->kva, PGSIZE);
 	}
+	// lock_release(&copy_lock);
 	return;
 }
 
@@ -484,7 +483,7 @@ static void kill_page (struct hash_elem *e, void *aux)
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
       struct supplemental_page_table *src UNUSED) {
-	ASSERT(dst->hash_table.elem_cnt == 0)
+	ASSERT(dst->hash_table.elem_cnt == 0);
 	size_t i;
 	struct hash *h = &src->hash_table;
 	for (i = 0; i < h->bucket_cnt; i++) {
