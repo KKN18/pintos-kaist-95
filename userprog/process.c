@@ -19,9 +19,8 @@
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
-#ifdef VM
 #include "vm/vm.h"
-#endif
+#include "vm/file.h"
 #define WORD_SIZE 8
 #define LOG 0
 
