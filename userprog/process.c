@@ -960,7 +960,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
 		/* GOJAE */
 		struct container *container = (struct container*) malloc(sizeof(struct container));
-
+		
         container->file = file;
         container->page_read_bytes = page_read_bytes;
         container->writable = writable;

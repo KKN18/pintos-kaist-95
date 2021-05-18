@@ -160,7 +160,10 @@ pid_t sys_fork (const char *thread_name, struct thread_and_if *tif) {
 bool create(const char *file, unsigned initial_size) {
    if (file == NULL) exit(-1);
    if (strlen(file) == 0) return false;
-   return filesys_create(file, initial_size);
+   lock_acquire(&file_access);
+   bool ret = filesys_create(file, initial_size);
+   lock_release(&file_access);
+   return ret;
 }
 
 bool remove(const char *file) {
@@ -178,12 +181,13 @@ int open(const char *file) {
       return -1;
    }
    int fd = allocate_fd(f);
-   lock_release(&file_access);
    if (fd == -1)
    {
       file_close(f);
+      lock_release(&file_access);
       exit(-1);
    }
+   lock_release(&file_access);
    return fd;
 }
 
@@ -243,7 +247,7 @@ int write (int fd, const void *buffer, unsigned size)
     if (fd == 1) //STDOUT
     {
       putbuf (buffer, size); // from stdio.h
-     lock_release(&file_access);
+      lock_release(&file_access);
       return size;
     }
 
@@ -262,7 +266,9 @@ void seek (int fd, unsigned position)
 {
   struct file *file = search_file(fd);
   if (!file) return;
-  file_seek (file, position);  
+  lock_acquire(&file_access);
+  file_seek (file, position);
+  lock_release(&file_access);  
 }
 
 unsigned tell (int fd)
@@ -305,6 +311,60 @@ void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset) 
    return do_mmap(addr, length, writable, file, offset);
 }
 
+void syscall_print(int n)
+{
+   switch (n)
+   {
+      case SYS_HALT:
+         printf("SYS_HALT\n");
+         break;
+      case SYS_EXIT:
+         printf("SYS_EXIT\n");
+         break;
+      case SYS_FORK:
+         printf("SYS_FORK\n");
+         break;
+      case SYS_EXEC:
+         printf("SYS_EXEC\n");
+         break;
+      case SYS_WAIT:
+         printf("SYS_WAIT\n");
+         break;
+      case SYS_CREATE:
+         printf("SYS_CREATE\n");
+         break;
+      case SYS_REMOVE:
+         printf("SYS_REMOVE\n");
+         break;
+      case SYS_OPEN:
+         printf("SYS_OPEN\n");
+         break;
+      case SYS_FILESIZE:
+         printf("SYS_FILESIZE\n");
+         break;
+      case SYS_READ:
+         printf("SYS_READ\n");
+         break;
+      case SYS_WRITE:
+         printf("SYS_WRITE\n");
+         break;
+      case SYS_SEEK:
+         printf("SYS_SEEK\n");
+         break;
+      case SYS_TELL:
+         printf("SYS_TELL\n");
+         break;
+      case SYS_CLOSE:
+         printf("SYS_CLOSE\n");
+         break;
+      case SYS_MMAP:
+         printf("SYS_MMAP\n");
+         break;
+      case SYS_MUNMAP:
+         printf("SYS_MUMMAP\n");
+         break;
+   }
+}
 
 /* END */
 
@@ -313,6 +373,7 @@ void
 syscall_handler (struct intr_frame *f) {
    // TODO: Your implementation goes here.
    /* Our Implementation */
+   // syscall_print(f->R.rax);
    //printf("MUNMAP : %d, syscall %d\n", SYS_MUNMAP, f->R.rax);
    switch (f->R.rax) {
       case SYS_HALT:

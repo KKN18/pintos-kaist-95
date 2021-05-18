@@ -286,7 +286,10 @@ vm_get_frame (void) {
 	struct frame *frame = calloc(1, sizeof *frame);
 	
 	if(frame == NULL)
-		PANIC("Calloc failed");
+	{
+		free(frame);
+		return NULL;
+	}
 	
 	uint8_t *kva = palloc_get_page (PAL_USER | PAL_ZERO);
 	
@@ -381,7 +384,16 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 
 	bool res = false;
 	
+	bool holdlock = lock_held_by_current_thread(&file_access);
+	if (!holdlock)
+	{
+		lock_acquire(&file_access);
+	}
 	res = vm_do_claim_page(page);
+	if (!holdlock)
+	{
+		lock_release(&file_access);
+	}
 	// printf("Res %d\n", res);
 	if(res)
 		page->is_loaded = true;
@@ -410,7 +422,10 @@ vm_claim_page (void *va UNUSED) {
 	page->va = va;
 	page->operations = &page_op;
 	spt_insert_page (&thread_current()->spt, page);
-	return vm_do_claim_page (page);
+	lock_acquire(&file_access);
+	bool ret = vm_do_claim_page (page);
+	lock_release(&file_access);
+	return ret;
 }
 
 /* Claim the PAGE and set up the mmu. */
@@ -461,7 +476,9 @@ static void copy_page (struct hash_elem *e, struct supplemental_page_table *dst)
 	/* Only allocate physical memory if loaded */
 	spt_insert_page(dst, newpage);
 	newpage->operations = &page_op;
+	lock_acquire(&file_access);
 	vm_do_claim_page(newpage);
+	lock_release(&file_access);
 	if(page->is_loaded)
 	{
 		/* Copy physical memory */
