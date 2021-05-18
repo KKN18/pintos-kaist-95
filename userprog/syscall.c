@@ -273,9 +273,12 @@ void seek (int fd, unsigned position)
 
 unsigned tell (int fd)
 {
-  struct file *file = search_file (fd);
-  if (!file) exit (-1);
-  return file_tell (file);
+   struct file *file = search_file (fd);
+   if (!file) exit (-1);
+   lock_acquire(&file_access);
+   unsigned res = file_tell (file);
+   lock_release(&file_access);
+   return res;
 }
 
 void close (int fd)
@@ -308,7 +311,10 @@ void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset) 
    struct file *file = search_file(fd);
    if (file == NULL)
       return NULL;
-   return do_mmap(addr, length, writable, file, offset);
+   lock_acquire(&file_access);
+   int8_t *res = do_mmap(addr, length, writable, file, offset);
+   lock_release(&file_access);
+   return res;
 }
 
 void syscall_print(int n)
@@ -432,9 +438,14 @@ syscall_handler (struct intr_frame *f) {
          assert_valid_useraddr(f->R.rdi, f->rsp);
          assert_valid_useraddr(f->R.rsi, f->rsp);
          assert_valid_useraddr(f->R.rdx, f->rsp);
+         int8_t *startbuf = f->R.rsi;
          int8_t *endbuf = f->R.rsi + f->R.rdx;
          // printf("buf 0x%lx size 0x%lx endbuf 0x%lx\n", f->R.rsi, f->R.rdx, endbuf);
-         assert_valid_useraddr(endbuf, f->rsp);
+         while(endbuf >= startbuf)     // What if endbuf overwrite startbuf?
+         {
+            assert_valid_useraddr(endbuf, f->rsp);
+            endbuf -= PGSIZE;
+         }
          f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
          break;
       case SYS_WRITE:
