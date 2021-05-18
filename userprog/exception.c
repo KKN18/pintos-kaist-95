@@ -5,6 +5,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "intrinsic.h"
+#include "threads/mmu.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -122,30 +123,22 @@ page_fault (struct intr_frame *f) {
 	bool write;        /* True: access was write, false: access was read. */
 	bool user;         /* True: access by user, false: access by kernel. */
 	void *fault_addr;  /* Fault address. */
-
+	
 	/* Obtain faulting address, the virtual address that was
 	   accessed to cause the fault.  It may point to code or to
 	   data.  It is not necessarily the address of the instruction
 	   that caused the fault (that's f->rip). */
 
 	fault_addr = (void *) rcr2();
-
+	// printf("\nFault 0x%lx pml4 get 0x%lx\n", fault_addr, pml4_get_page(thread_current()->pml4, fault_addr));
 	/* Turn interrupts back on (they were only off so that we could
 	   be assured of reading CR2 before it changed). */
 	intr_enable ();
-
 
 	/* Determine cause. */
 	not_present = (f->error_code & PF_P) == 0;
 	write = (f->error_code & PF_W) != 0;
 	user = (f->error_code & PF_U) != 0;
-
-	// Our Implementation
-   	if (!user || !is_user_vaddr(fault_addr) || not_present) 
-	{	
-    	exit(-1);
-    }
-    // END
 
 #ifdef VM
 	/* For project 3 and later. */
@@ -155,7 +148,6 @@ page_fault (struct intr_frame *f) {
 
 	/* Count page faults. */
 	page_fault_cnt++;
-
 	/* If the fault is true fault, show info and exit. */
 	printf ("Page fault at %p: %s error %s page in %s context.\n",
 			fault_addr,

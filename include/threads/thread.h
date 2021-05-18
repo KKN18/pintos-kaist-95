@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 /* Our Implementation */
 #include "threads/synch.h"
+#include "lib/kernel/hash.h"
 // END
 #ifdef VM
 #include "vm/vm.h"
@@ -94,6 +95,7 @@ struct thread {
 	int priority;                       /* Priority. */
 
 	/* Our Implementation */
+	struct list_elem allelem;
 	int64_t wake_tick;
 	int base_priority;
 	struct lock *wait_on_lock;
@@ -128,6 +130,7 @@ struct thread {
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
+	struct list mmap_list;
 #endif
 
 	/* Owned by thread.c. */
@@ -175,6 +178,7 @@ void update_mlfqs_recent_cpu (struct thread *t);
 void update_mlfqs_load_avg (void);
 void thread_increment_recent_cpu (void);
 void update_all_mlfqs (void);
+struct thread *thread_get_by_id (tid_t id);
 /* END */
 
 void do_iret (struct intr_frame *tf);
