@@ -25,7 +25,7 @@ static struct lock copy_lock;
 static struct list vm_frames;
 
 /* For evcition algorithm */
-static struct list_elem *clock_ptr;
+static struct list_elem *vm_frames_ptr;
 /* END */
 
 /* Our Implementation */
@@ -86,7 +86,7 @@ vm_init (void) {
 	lock_init (&vm_lock);
 	lock_init (&eviction_lock);
 	lock_init (&copy_lock);
-	clock_ptr = NULL;
+	vm_frames_ptr = NULL;
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -109,8 +109,7 @@ static bool vm_do_claim_page (struct page *page);
 static struct frame *vm_evict_frame (void);
 
 /* Our Implementation */
-// WOOKAYIN
-static struct frame *clock_frame_next(void);
+static struct frame *vm_frame_next(void);
 
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
@@ -206,23 +205,30 @@ vm_get_victim (void) {
 	struct frame *victim = NULL;
 	struct thread *t;
 	 /* TODO: The policy for eviction is up to you. */
-	/* WOOKAYIN */
-	size_t n = list_size(&vm_frames);
+	size_t len = list_size(&vm_frames);
 
-	for(int i = 0; i < 2*n; i++)
+	for(int i = 0; ; i++)
 	{
+		victim = vm_frame_next();
 		
-		victim = clock_frame_next();
+		// Stack is not a candidate for eviction
 		if (victim->page->type == VM_MARKER_0)
 		{
-			victim = clock_frame_next();
+			victim = vm_frame_next();
 		}
+
 		t = thread_get_by_id(victim->tid);
+		
 		if(pml4_is_accessed(t->pml4, victim->kva))
 			pml4_set_accessed(t->pml4, victim->kva, false);
 		else
 			break;
+		
+		// Avoid possible infinite loop
+		if(i > len * 10)
+			PANIC("Eviction may have caused infinite loop");
 	}
+
 	return victim;
 }
 
@@ -248,22 +254,16 @@ vm_evict_frame (void) {
 
 /* Our Implementation */
 static struct frame * 
-clock_frame_next(void)
+vm_frame_next(void)
 {
-	if (list_empty(&vm_frames))
-		PANIC("Frame table is empty, can't happen - there is a leak somewhere");
-
-	if (clock_ptr == NULL || clock_ptr == list_back(&vm_frames))
-	{
-		clock_ptr = list_front (&vm_frames);
-	}
+	// Behaves like circular linked list
+	if (vm_frames_ptr == NULL 
+		|| vm_frames_ptr == list_back(&vm_frames))
+		vm_frames_ptr = list_front (&vm_frames);
 	else
-	{
-		clock_ptr = list_next (clock_ptr);
-	}
+		vm_frames_ptr = list_next (vm_frames_ptr);
 		
-
-	struct frame *e = list_entry(clock_ptr, struct frame, elem);
+	struct frame *e = list_entry(vm_frames_ptr, struct frame, elem);
 	return e;
 }
 
