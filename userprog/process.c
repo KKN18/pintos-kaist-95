@@ -868,7 +868,7 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: VA is available when calling this function. */
 	/* GOJAE */
 	struct frame *frame = page->frame;
-    struct container *container = (struct container*) aux;
+    struct container *container = (struct container *) aux;
     struct file *file = container->file;
     size_t page_read_bytes = container->page_read_bytes;
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
@@ -880,17 +880,18 @@ lazy_load_segment (struct page *page, void *aux) {
 	anon_page->page_read_bytes = page_read_bytes;
 	anon_page->writable = writable;
 	anon_page->offset = offset;
+
 	// Load anon_page from container
-   if (page->type == VM_ANON)
-   {
-      struct anon_page *anon_page = &page->anon;
-      anon_page->page_read_bytes = page_read_bytes;
-      anon_page->writable = writable;
-      anon_page->offset = offset;
-   }
+	if (page->type == VM_ANON)
+	{
+		struct anon_page *anon_page = &page->anon;
+		anon_page->page_read_bytes = page_read_bytes;
+		anon_page->writable = writable;
+		anon_page->offset = offset;
+	}
+
 	if (page->type == VM_FILE)
 	{
-		// printf("Read bytes %d\n", page_read_bytes);
 		struct file_page *file_page = &page->file;
 		file_page->file = file;
 		file_page->page_read_bytes = page_read_bytes;
@@ -958,12 +959,13 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
 		/* GOJAE */
-		struct container *container = (struct container*) malloc(sizeof(struct container));
+		struct container *container = (struct container *) malloc(sizeof(struct container));
 		
         container->file = file;
         container->page_read_bytes = page_read_bytes;
         container->writable = writable;
-        container->offset = ofs;
+		container->offset = ofs;
+
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
 					writable, lazy_load_segment, container))
 			return false;
@@ -990,7 +992,8 @@ setup_stack (struct intr_frame *if_) {
 	/* TODO: Your code goes here */
 	struct thread *t = thread_current();
 	success = vm_claim_page(stack_bottom);
-	// // Mark the page as STACK (VM_MARKER_0)
+	
+	// Mark the page as STACK (VM_MARKER_0)
 	struct page *page = spt_find_page(&t->spt, stack_bottom);
 	page->type = VM_MARKER_0;
 	if (success)
@@ -998,7 +1001,6 @@ setup_stack (struct intr_frame *if_) {
 		page->is_loaded = true;
 		if_->rsp = USER_STACK;
 	}
-		
 	else
 	{
 		PANIC("setup stack error");

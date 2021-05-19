@@ -20,8 +20,11 @@
 static struct lock vm_lock;
 static struct lock eviction_lock;
 static struct lock copy_lock;
+
 /* Frame list */
 static struct list vm_frames;
+
+/* For evcition algorithm */
 static struct list_elem *clock_ptr;
 /* END */
 
@@ -38,7 +41,6 @@ static bool add_map (struct page *page, void *kva)
 	return res;
 }
 
-/* CODYJACK */
 /* Functionality required by hash table*/
 unsigned
 suppl_pt_hash (const struct hash_elem *he, void *aux UNUSED)
@@ -150,12 +152,11 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	}
 	struct page page;
 	/* TODO: Fill this function. */
-	/* CODYJACK */
 	struct hash ht = spt->hash_table;
 	struct hash_elem *e;
 
 	page.va = va;
-	// ASSERT (pg_ofs (page.va) == 0);
+	ASSERT (pg_ofs (page.va) == 0);
 	if(LOG)
 		printf("	Before find:\n");
 	e = hash_find(&ht, &page.elem);
@@ -177,13 +178,13 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
 	int succ = false;
 	/* TODO: Fill this function. */
-	/* CODYJACK */
 	struct hash_elem *result;
 	if (page == NULL)
 		return succ;
 	
-	// ASSERT (pg_ofs (page->va) == 0);
-	// ASSERT (spt_find_page(spt, page->va) == NULL);
+	ASSERT (pg_ofs (page->va) == 0);
+	ASSERT (spt_find_page(spt, page->va) == NULL);
+
 	result = hash_insert(&spt->hash_table, &page->elem);
 	if (result != NULL)
 		return succ;
@@ -222,7 +223,6 @@ vm_get_victim (void) {
 		else
 			break;
 	}
-	// printf("Got victim VA 0x%lx\n", victim->page->va);
 	return victim;
 }
 
@@ -237,15 +237,12 @@ vm_evict_frame (void) {
 	pml4_clear_page(t->pml4, victim->page->va);
 	bool is_dirty = false;
 	is_dirty = pml4_is_dirty(t->pml4, victim->kva);
-	// If VM_FILE and not dirty, do nothing.
-	// If VM_FILE and dirty, do something.
 
 	// Call swap_out
-	// printf("VA 0x%lx KVA 0x%lx\n", victim->page->va, victim->kva);
 	lock_acquire(&eviction_lock);
-	// printf("here\n");
 	swap_out(victim->page);
 	lock_release(&eviction_lock);
+
 	return victim;
 }
 
@@ -263,7 +260,6 @@ clock_frame_next(void)
 	else
 	{
 		clock_ptr = list_next (clock_ptr);
-		// printf("In cycle\n");
 	}
 		
 
@@ -282,7 +278,6 @@ vm_get_frame (void) {
 		printf("vm_get_frame\n");
 	}
 	/* TODO: Fill this function. */
-	/* Eviction is not considered yet. */
 	struct frame *frame = calloc(1, sizeof *frame);
 	
 	if(frame == NULL)
@@ -305,12 +300,9 @@ vm_get_frame (void) {
 	{
 		free(frame);
 		frame = vm_evict_frame();
-		// printf("evitced\n");
 		frame->tid = thread_current()->tid;
-		// PANIC ("todo");
 	}
 	ASSERT (frame != NULL);
-	// ASSERT (frame->page == NULL);
 	return frame;
 }
 
@@ -343,7 +335,6 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	/* Page fault is TRUE page fault */
-	// printf("\nFault Addr 0x%lx\n", pg_round_down(addr));
   	if (addr == NULL || !not_present || !is_user_vaddr(addr))
 	{
 		exit(-1);
@@ -357,9 +348,6 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	}
 
 	page = spt_find_page(spt, pg_round_down(addr));
-	
-	// if(page->is_swapped == true)
-	// 	PANIC("Implement swap");
 
 	if(page == NULL)
 	{
@@ -394,7 +382,6 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	{
 		lock_release(&file_access);
 	}
-	// printf("Res %d\n", res);
 	if(res)
 		page->is_loaded = true;
 
@@ -458,20 +445,21 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	return;
 }
 
-/* CODYJACK */
 static void copy_page (struct hash_elem *e, struct supplemental_page_table *dst)
 {
-	// lock_acquire(&copy_lock);
+	lock_acquire(&copy_lock);
 	struct thread *t = thread_current();
 	struct page *page = hash_entry(e, struct page, elem);
 	struct page *newpage = (struct page *)malloc(sizeof(struct page));
+
 	memcpy(newpage, page, sizeof(struct page));
-	// newpage->va = page->va;
+
 	if (newpage == NULL) {
 		free(newpage);
 		PANIC("not enough memory");
 	}
 	ASSERT(page != NULL);
+
 	/* Insert to child's spt */
 	/* Only allocate physical memory if loaded */
 	spt_insert_page(dst, newpage);
@@ -484,7 +472,7 @@ static void copy_page (struct hash_elem *e, struct supplemental_page_table *dst)
 		/* Copy physical memory */
 		memcpy(newpage->frame->kva, page->frame->kva, PGSIZE);
 	}
-	// lock_release(&copy_lock);
+	lock_release(&copy_lock);
 	return;
 }
 

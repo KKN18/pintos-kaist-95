@@ -20,7 +20,6 @@ static const struct page_operations anon_ops = {
 	.type = VM_ANON,
 };
 
-/* CODYJACK */
 /* Bitmap of swap slot availablities and corresponding lock */
 static struct bitmap *swap_table;
 static const size_t SECTORS_PER_PAGE = PGSIZE / DISK_SECTOR_SIZE;
@@ -60,6 +59,7 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	/* END */
 
 	struct anon_page *anon_page = &page->anon;
+	
 	/* Our Implementation */
 	anon_page->page_read_bytes = 0;
 	anon_page->writable = true;
@@ -78,9 +78,6 @@ static bool
 anon_swap_in (struct page *page, void *kva) {
 	struct anon_page *anon_page = &page->anon;
 
-	/* Is this page on user's virtual memory? */
-	// ASSERT()
-
 	disk_sector_t swap_index = anon_page->swap_index;
 
 	// Check the swap region
@@ -98,7 +95,6 @@ anon_swap_in (struct page *page, void *kva) {
 	bitmap_set(swap_table, swap_index, true);
 	page->is_swapped = false;
 	install_page(page->va, kva, anon_page->writable);
-	// printf("SWAP IN VA 0x%lx\n", page->va);
 	return true;
 }
 
@@ -106,17 +102,15 @@ anon_swap_in (struct page *page, void *kva) {
 static bool
 anon_swap_out (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
-	/* Is this page on user's virtual memory? */
-	// ASSERT()
+
 	disk_sector_t swap_index = bitmap_scan(swap_table, 0, 1, true);
+
 	if(swap_index == BITMAP_ERROR)
 	{
 		PANIC("No more swap slot");
 	}
+
 	size_t i;
-	// printf("swap_table %d\n", disk_size(swap_disk) / DISK_SECTOR_SIZE);
-	// printf("swap_index %d\n", swap_index);
-	// printf("KVA 0x%lx\n", page->frame->kva);
 	for(i = 0; i < SECTORS_PER_PAGE; i++) {
 		disk_write(swap_disk, swap_index * (SECTORS_PER_PAGE) + i,
 						(page->frame->kva) + (DISK_SECTOR_SIZE * i));
@@ -124,7 +118,7 @@ anon_swap_out (struct page *page) {
 	bitmap_set(swap_table, swap_index, false);
 	anon_page->swap_index = swap_index;
 	page->is_swapped = true;
-	// printf("Swap Out VA 0x%lx\n", page->va);
+
 	return true;
 }
 
