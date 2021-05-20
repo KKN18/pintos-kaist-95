@@ -13,10 +13,10 @@ struct file_page {
 	off_t offset;
 };
 
-/* Ryu */
-struct mmap_file {
-    void *va;				//thread.h, thread.c nextmapid, mmaplist 이름 바꾸기
-    struct list_elem elem;
+
+struct mmap_va {
+    uint8_t *va;				
+    struct list_elem mmaplist_elem;
     struct list page_list;
 };
 

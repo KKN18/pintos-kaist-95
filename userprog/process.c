@@ -343,7 +343,7 @@ process_exit (void) {
 	
 	for (e = list_begin(&curr->mmap_list); e != list_end(&curr->mmap_list);)
 	{
-		struct mmap_file *f = list_entry (e, struct mmap_file, elem);
+		struct mmap_va *f = list_entry (e, struct mmap_va, mmaplist_elem);
 		if (f != NULL)	
 		{
 			e = list_next(e);
@@ -859,7 +859,7 @@ bool install_page (void *upage, void *kpage, bool writable) {
 
 
 
-static bool
+bool
 lazy_load_segment (struct page *page, void *aux) {
 	if(LOG)
 		printf("Lazy_load_segment on page 0x%lx\n", page->va);
@@ -868,20 +868,14 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: VA is available when calling this function. */
 	/* GOJAE */
 	struct frame *frame = page->frame;
-    struct container *container = (struct container *) aux;
-    struct file *file = container->file;
-    size_t page_read_bytes = container->page_read_bytes;
+    struct temp *temp = (struct temp *) aux;
+    struct file *file = temp->file;
+    size_t page_read_bytes = temp->page_read_bytes;
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
-    bool writable = container->writable;
-    off_t offset = container->offset;
+    bool writable = temp->writable;
+    off_t offset = temp->offset;
 
-	// Load anon_page from container
-	struct anon_page *anon_page = &page->anon;
-	anon_page->page_read_bytes = page_read_bytes;
-	anon_page->writable = writable;
-	anon_page->offset = offset;
-
-	// Load anon_page from container
+	// Load anon_page from temp
 	if (page->type == VM_ANON)
 	{
 		struct anon_page *anon_page = &page->anon;
@@ -907,13 +901,11 @@ lazy_load_segment (struct page *page, void *aux) {
 	
 	if ((read = file_read(file, frame->kva, page_read_bytes)) != (int)page_read_bytes)
 	{
-		/* Why VM_FILE No ERROR? */
 		if (page->type == VM_ANON)
 			return false;
 	}
-
     memset((frame->kva) + page_read_bytes, 0, page_zero_bytes);
-	
+
 	if(LOG)
 	{
 		printf("	Page(0x%lx) loaded successfully\n", page->va);
@@ -922,10 +914,6 @@ lazy_load_segment (struct page *page, void *aux) {
 	return install_page(page->va, frame->kva, writable);
 }
 
-bool call_lazy_load_segment (struct page *page, void *aux) {
-	ASSERT(page->type == VM_FILE);
-	return lazy_load_segment(page, aux);
-}
 
 /* Loads a segment starting at offset OFS in FILE at address
  * UPAGE.  In total, READ_BYTES + ZERO_BYTES bytes of virtual
@@ -949,7 +937,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT (ofs % PGSIZE == 0);
 
 	/* Not sure */
-	file_seek(file, ofs);
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
@@ -959,15 +946,15 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
 		/* GOJAE */
-		struct container *container = (struct container *) malloc(sizeof(struct container));
+		struct temp *temp = (struct temp *) malloc(sizeof(struct temp));
 		
-        container->file = file;
-        container->page_read_bytes = page_read_bytes;
-        container->writable = writable;
-		container->offset = ofs;
+        temp->file = file;
+        temp->page_read_bytes = page_read_bytes;
+        temp->writable = writable;
+		temp->offset = ofs;
 
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
-					writable, lazy_load_segment, container))
+					writable, lazy_load_segment, temp))
 			return false;
 		/* Advance. */
 		read_bytes -= page_read_bytes;

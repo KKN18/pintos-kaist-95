@@ -45,7 +45,10 @@ static bool
 file_backed_swap_in (struct page *page, void *kva) {
    struct file_page *file_page UNUSED = &page->file;
    install_page(page->va, kva, file_page->writable);
-   file_read_at(file_page->file, page->va, file_page->page_read_bytes, file_page->offset);
+   file_read_at(file_page->file, kva, file_page->page_read_bytes, file_page->offset);
+   memset (kva + file_page->page_read_bytes, 0, PGSIZE - file_page->page_read_bytes);
+   page->is_loaded = true;
+   // printf("FILE SWAP IN VA 0x%lx KVA 0x%lx\n", page->va, kva);
    return true;
 }
 
@@ -58,6 +61,8 @@ file_backed_swap_out (struct page *page) {
       file_write_at(file_page->file, page->va, file_page->page_read_bytes, file_page->offset);
    }
    pml4_set_dirty(thread_current()->pml4, page->va, false);
+   page->is_loaded = false;
+   // printf("FILE SWAP OUT VA 0x%lx KVA 0x%lx\n", page->va, page->frame->kva);
    return true;
 }
 
@@ -74,12 +79,13 @@ file_backed_destroy (struct page *page) {
 }
 
 /* RYU */
-struct mmap_file *find_mmap_file (void *addr) {
+struct mmap_va *find_mmap_file (void *addr) {
    struct list_elem *e;
    struct thread *t = thread_current();
-   for (e = list_begin(&t->mmap_list); e != list_end(&t->mmap_list); e = list_next(e))
+   struct list *mmap_list = &t->mmap_list;
+   for (e = list_begin(mmap_list); e != list_end(mmap_list); e = list_next(e))
    {
-      struct mmap_file *f = list_entry (e, struct mmap_file, elem);
+      struct mmap_va *f = list_entry (e, struct mmap_va, mmaplist_elem);
       if (f->va == addr)
          return f;
    }
@@ -95,41 +101,40 @@ do_mmap (void *addr, size_t length, int writable,
    if (length == 0) return NULL;
    if (find_mmap_file(addr) != NULL) return NULL;
    if (offset > PGSIZE) return NULL;
-   int8_t *map_addr = addr;
-   /* Ryu */
-   struct mmap_file *mmap_file = (struct mmap_file *)malloc(sizeof(struct mmap_file));
-   if (mmap_file == NULL) return NULL;
-   memset(mmap_file, 0, sizeof(struct mmap_file));
-   list_init(&mmap_file->page_list);
-   mmap_file->va = addr;
-
+   uint8_t *map_addr = addr;
+   struct mmap_va *mmap_va = (struct mmap_va *)malloc(sizeof(struct mmap_va));
+   if (mmap_va == NULL) return NULL;
+   memset(mmap_va, 0, sizeof(struct mmap_va));
+   list_push_back (&thread_current()->mmap_list, &mmap_va->mmaplist_elem);
+   list_init(&mmap_va->page_list);
+   mmap_va->va = addr;
    struct file *refile;
-   list_push_back (&thread_current()->mmap_list, &mmap_file->elem);
    while(length > 0) {
       size_t read_bytes = length < PGSIZE ? length : PGSIZE;
       size_t zero_bytes = PGSIZE - read_bytes;
-
-      struct container *container = (struct container*) malloc(sizeof(struct container));
+      // printf("addr 0x%lx pg_round 0x%lx\n", addr, pg_round_down(addr));
+      struct temp *temp = (struct temp*) malloc(sizeof(struct temp));
       refile = file_reopen(file);
-      container->file = refile;
-      ASSERT(container->file != NULL);
-      container->page_read_bytes = read_bytes;
-      container->writable = writable;
-      container->offset = offset;
-
-      if (!vm_alloc_page_with_initializer (VM_FILE, addr,
-         writable, call_lazy_load_segment, container))
+      temp->file = refile;
+      ASSERT(temp->file != NULL);
+      temp->page_read_bytes = read_bytes;
+      temp->writable = writable;
+      temp->offset = offset;
+      
+      // printf("MMAP VA 0x%lx\n", addr);
+      if (!vm_alloc_page_with_initializer (VM_FILE, addr, 
+         writable, lazy_load_segment, temp))
          return NULL;
 
-      struct page* page = spt_find_page(&thread_current()->spt, addr);
+      struct page* page = spt_find_page(&thread_current()->spt, addr); 
       ASSERT(page != NULL);
-      list_push_back(&mmap_file->page_list, &page->mmap_elem);
+      list_push_back(&mmap_va->page_list, &page->mmap_elem);
 
       length -= read_bytes;
       addr += PGSIZE;
       offset += read_bytes;
    }
-   
+   // printf("\n");
    return map_addr; 
 }
 
@@ -137,7 +142,7 @@ do_mmap (void *addr, size_t length, int writable,
 /* Do the munmap */
 void
 do_munmap (void *addr) {
-   struct mmap_file *f = find_mmap_file(addr);
+   struct mmap_va *f = find_mmap_file(addr);
    if (f == NULL) exit(-1);
    struct list_elem *e;
    int i=0;
@@ -145,8 +150,14 @@ do_munmap (void *addr) {
    {
       struct page *page = list_entry(e, struct page, mmap_elem);
       e = list_remove(e);
+      if (page->is_loaded)
+      {
+         
+         struct list_elem *frame_elem = &page->frame->elem;
+         list_remove(frame_elem);
+      }
       spt_remove_page(&thread_current()->spt, page);
    }
-   list_remove (&f->elem);
+   list_remove (&f->mmaplist_elem);
    free(f);
 }

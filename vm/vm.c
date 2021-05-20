@@ -18,7 +18,7 @@
 
 /* For synchronization */
 static struct lock vm_lock;
-static struct lock eviction_lock;
+static struct lock swap_lock;
 static struct lock copy_lock;
 
 /* Frame list */
@@ -84,7 +84,7 @@ vm_init (void) {
 	/* TODO: Your code goes here. */
 	list_init (&vm_frames);
 	lock_init (&vm_lock);
-	lock_init (&eviction_lock);
+	lock_init (&swap_lock);
 	lock_init (&copy_lock);
 	vm_frames_ptr = NULL;
 }
@@ -205,22 +205,21 @@ vm_get_victim (void) {
 	struct frame *victim = NULL;
 	struct thread *t;
 	 /* TODO: The policy for eviction is up to you. */
-	size_t len = list_size(&vm_frames);
-
+	size_t len = list_size(&vm_frames); 
 	for(int i = 0; ; i++)
 	{
 		victim = vm_frame_next();
-		
 		// Stack is not a candidate for eviction
 		if (victim->page->type == VM_MARKER_0)
 		{
-			victim = vm_frame_next();
+			continue;
 		}
 
 		t = thread_get_by_id(victim->tid);
 		
-		if(pml4_is_accessed(t->pml4, victim->kva))
-			pml4_set_accessed(t->pml4, victim->kva, false);
+		// printf("VA 0x%lx ", victim->page->va);
+		if(pml4_is_accessed(t->pml4, victim->page->va))
+			pml4_set_accessed(t->pml4, victim->page->va, false);
 		else
 			break;
 		
@@ -228,6 +227,7 @@ vm_get_victim (void) {
 		if(i > len * 10)
 			PANIC("Eviction may have caused infinite loop");
 	}
+	// printf("\n");
 
 	return victim;
 }
@@ -245,9 +245,9 @@ vm_evict_frame (void) {
 	is_dirty = pml4_is_dirty(t->pml4, victim->kva);
 
 	// Call swap_out
-	lock_acquire(&eviction_lock);
+	lock_acquire(&swap_lock);
 	swap_out(victim->page);
-	lock_release(&eviction_lock);
+	lock_release(&swap_lock);
 
 	return victim;
 }
@@ -407,7 +407,7 @@ vm_claim_page (void *va UNUSED) {
 	ASSERT(page != NULL);
 	/* TODO: Fill this function */
 	page->va = va;
-	page->operations = &page_op;
+	page->operations = &page_op;	// When page calls swap_in, it goes to add_map
 	spt_insert_page (&thread_current()->spt, page);
 	lock_acquire(&file_access);
 	bool ret = vm_do_claim_page (page);
@@ -434,7 +434,6 @@ vm_do_claim_page (struct page *page) {
 	frame->page = page;
 	page->frame = frame;
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	// Call add_map
 	return swap_in (page, frame->kva);
 }
 

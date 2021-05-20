@@ -19,7 +19,7 @@ test_main (void)
     char *actual = (char *) 0x10000000;
     void *map;
     size_t i;
-
+    
     /* Map a page to a file */
     CHECK ((handle = open ("large.txt")) > 1, "open \"large.txt\"");
     CHECK ((map = mmap (actual, sizeof(large), 0, handle, 0)) != MAP_FAILED, "mmap \"large.txt\"");
@@ -43,5 +43,6 @@ test_main (void)
     /* Unmap and close opend file */ 
     munmap (map);
     close (handle);
+    
 }
 
