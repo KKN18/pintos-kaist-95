@@ -153,11 +153,28 @@ fat_boot_create (void) {
 void
 fat_fs_init (void) {
 	/* TODO: Your code goes here. */
+	struct fat_boot *bs = &fat_fs->bs;
+	fat_fs->fat_length = bs->fat_sectors / bs->sectors_per_cluster;
+	fat_fs->data_start = bs->fat_start + fat_fs->fat_length;
 }
 
 /*----------------------------------------------------------------------------*/
 /* FAT handling                                                               */
 /*----------------------------------------------------------------------------*/
+
+cluster_t
+fat_find_empty () {
+	unsigned int *fat = fat_fs->fat;
+	cluster_t index = 0;
+	while(fat[index] != 0)
+	{
+		index++;
+	}
+
+	// What if fat is full??
+
+	return index;
+}
 
 /* Add a cluster to the chain.
  * If CLST is 0, start a new chain.
@@ -165,6 +182,12 @@ fat_fs_init (void) {
 cluster_t
 fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	unsigned int *fat = fat_fs->fat;
+	cluster_t new_clst = fat_find_empty();
+	if (clst != 0)
+		fat[clst] = new_clst;
+	fat[new_clst] = -1;
+	return new_clst;
 }
 
 /* Remove the chain of clusters starting from CLST.
@@ -172,22 +195,41 @@ fat_create_chain (cluster_t clst) {
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	/* TODO: Your code goes here. */
+	unsigned int *fat = fat_fs->fat;
+	cluster_t cur_clst = clst;
+	while(fat[cur_clst] != -1)
+	{
+		clst = fat[cur_clst];
+		fat[cur_clst] = 0;
+		cur_clst = clst;
+	}
+	fat[cur_clst] = 0;
+	fat[pclst] = -1;
 }
 
 /* Update a value in the FAT table. */
 void
 fat_put (cluster_t clst, cluster_t val) {
 	/* TODO: Your code goes here. */
+	unsigned int *fat = fat_fs->fat;
+	//cluster_t nxt_clst = fat[clst];
+	fat[clst] = val;
+	//fat[val] = nxt_clst;
+	// 그냥 clst랑 val만 연결하는 건가?
 }
 
 /* Fetch a value in the FAT table. */
 cluster_t
 fat_get (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	unsigned int *fat = fat_fs->fat;
+	return fat[clst];
 }
 
 /* Covert a cluster # to a sector number. */
 disk_sector_t
 cluster_to_sector (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	struct fat_boot *bs = &fat_fs->bs;
+	return clst * (bs->sectors_per_cluster);
 }
