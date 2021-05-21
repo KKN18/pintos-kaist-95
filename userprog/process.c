@@ -325,11 +325,14 @@ void
 process_exit (void) {
 	if(LOG)
 		printf("process_exit: %s\n", thread_name());
+
 	struct thread *curr = thread_current ();
+	
 	/* TODO: Your code goes here.
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+	
 	struct list_elem *p = list_begin(&curr->file_list);
 	for (p; p!=list_end(&curr->file_list);)
 	{
@@ -343,11 +346,11 @@ process_exit (void) {
 	
 	for (e; e != list_end(&curr->mmap_list);)
 	{
-		struct mmap_va *f = list_entry (e, struct mmap_va, mmaplist_elem);
-		if (f != NULL)	
+		struct mmap_va *mmap_va = list_entry (e, struct mmap_va, mmaplist_elem);
+		if (mmap_va != NULL)	
 		{
 			e = list_next(e);
-			do_munmap(f->start_va);
+			do_munmap(mmap_va->start_va);
 		}
 		else e = list_next(e);
 	}
@@ -945,9 +948,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
 		struct temp *temp = (struct temp *) malloc(sizeof(struct temp));	// We use temp structure to pass over the information about loading page
+		
 		if (temp == NULL)
 			return false;
-        temp->file = file;
+        
+		temp->file = file;
         temp->page_read_bytes = page_read_bytes;	// We don't need to get page_zero_bytes because it is always PGSIZE - page_read_bytes
         temp->writable = writable;
 		temp->offset = ofs;

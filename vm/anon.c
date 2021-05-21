@@ -33,11 +33,13 @@ vm_anon_init (void) {
 	if(swap_disk == NULL)
 		PANIC("no swap disk");
 
+	// Handle swap_disk with bitmap
 	swap_table = bitmap_create(disk_size(swap_disk) / SECTORS_PER_PAGE);
+
 	if(swap_table == NULL)
 		PANIC("no swap table");
 
-
+	// We can use any spot
 	bitmap_set_all(swap_table, true);
 	return;
 }
@@ -51,6 +53,7 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 		printf("anon_initializer\n");
 		printf("	page->va: 0x%lx, kva: 0x%lx\n", page->va, kva);
 	}
+
 	page->operations = &anon_ops;
 	/* Our Implementation */
 	ASSERT(VM_TYPE(type) == VM_ANON);
@@ -69,7 +72,6 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	anon_page->swap_index = -1;
 	/* END */
 
-	/* What is the return value? */
 	return true;
 }
 
@@ -86,15 +88,19 @@ anon_swap_in (struct page *page, void *kva) {
 		PANIC("Error, invalid read access to unassigned swap block");
 	}
 
-	size_t i;
-	for(i = 0; i < SECTORS_PER_PAGE; i++) {
+	// Read from swap_disk
+	for(size_t i = 0; i < SECTORS_PER_PAGE; i++) {
 		disk_read(swap_disk, swap_index * SECTORS_PER_PAGE + i,
 									kva + (DISK_SECTOR_SIZE * i));
 	}
 
+	// Set avaliability as true (We can use this index in the future.)
 	bitmap_set(swap_table, swap_index, true);
 	page->is_swapped = false;
+
+	// Mapping in physical memory
 	install_page(page->va, kva, anon_page->writable);
+	
 	return true;
 }
 
@@ -110,12 +116,15 @@ anon_swap_out (struct page *page) {
 		PANIC("No more swap slot");
 	}
 
-	size_t i;
-	for(i = 0; i < SECTORS_PER_PAGE; i++) {
+	// Write to swap_disk
+	for(size_t i = 0; i < SECTORS_PER_PAGE; i++) {
 		disk_write(swap_disk, swap_index * (SECTORS_PER_PAGE) + i,
 						(page->frame->kva) + (DISK_SECTOR_SIZE * i));
 	}
+
+	// Set avaliability as false.
 	bitmap_set(swap_table, swap_index, false);
+	// Save swap_index for later swap_in
 	anon_page->swap_index = swap_index;
 	page->is_swapped = true;
 
@@ -126,6 +135,8 @@ anon_swap_out (struct page *page) {
 static void
 anon_destroy (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
+	// Nothing to do
+	// No dynamically allocated memory
 	if(page->is_loaded == true)
 	{
 		// file_close(file);

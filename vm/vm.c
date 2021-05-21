@@ -42,27 +42,27 @@ static bool add_map (struct page *page, void *kva)
 }
 
 /* Functionality required by hash table*/
-unsigned
-suppl_pt_hash (const struct hash_elem *he, void *aux UNUSED)
+uint64_t
+spt_hash (const struct hash_elem *he, void *aux UNUSED)
 {
-  const struct page *page;
+  struct page *page;
   page = hash_entry (he, struct page, elem);
   return hash_bytes (&page->va, sizeof(page->va));
 }
 
 /* Functionality required by hash table*/
 bool
-suppl_pt_less (const struct hash_elem *hea,
+spt_less (const struct hash_elem *hea,
                const struct hash_elem *heb,
 	       void *aux UNUSED)
 {
-  const struct page *pagea;
-  const struct page *pageb;
+  struct page *pagea;
+  struct page *pageb;
  
   pagea = hash_entry (hea, struct page, elem);
   pageb = hash_entry (heb, struct page, elem);
 
-  return (pagea->va - pageb->va) < 0;
+  return pagea->va < pageb->va;
 }
 /* END */
 
@@ -440,7 +440,7 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
-	hash_init (&spt->hash_table, suppl_pt_hash, suppl_pt_less, NULL);
+	hash_init (&spt->hash_table, spt_hash, spt_less, NULL);
 	return;
 }
 

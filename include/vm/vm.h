@@ -100,10 +100,9 @@ struct supplemental_page_table {
 	struct hash hash_table; 
 };
 
-unsigned suppl_pt_hash (const struct hash_elem *he, void *aux);
-bool suppl_pt_less (const struct hash_elem *hea, const struct hash_elem *heb,
+uint64_t spt_hash (const struct hash_elem *he, void *aux);
+bool spt_less (const struct hash_elem *hea, const struct hash_elem *heb,
 	       		void *aux);
-/* END OF CODYJACK */
 
 #include "threads/thread.h"
 void supplemental_page_table_init (struct supplemental_page_table *spt);
