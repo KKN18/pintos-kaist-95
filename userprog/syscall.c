@@ -101,17 +101,15 @@ void delete_file (int fd) {
 
 void assert_valid_useraddr(const void *vaddr, int8_t *rsp) {
    if (!is_user_vaddr(vaddr))  exit(-1);
-   if (!spt_find_page(&thread_current()->spt, pg_round_down(vaddr)))
+   if (!spt_find_page(&thread_current()->spt, pg_round_down(vaddr))) // If the address and rsp value is in stack grow condition, grow it here because we know the rsp value
    {
-       if (vaddr < USER_STACK && vaddr > USER_STACK - (1 << 20))
+       if (vaddr < USER_STACK && vaddr > USER_STACK - (1 << 20))  // Stack size is 1MB
       {
-         if (rsp == vaddr + 8 || vaddr > rsp)
+         if (rsp == vaddr + 8 || vaddr > rsp)   
          {
-            // printf("   pass vaddr 0x%lx rsp 0x%lx\n", vaddr, rsp);
             vm_stack_growth(pg_round_down(vaddr));
             return true;
          }
-         // printf("   vaddr 0x%lx rsp 0x%lx\n", vaddr, rsp);
       }
    }
 }
@@ -440,8 +438,7 @@ syscall_handler (struct intr_frame *f) {
          assert_valid_useraddr(f->R.rdx, f->rsp);
          int8_t *startbuf = f->R.rsi;
          int8_t *endbuf = f->R.rsi + f->R.rdx;
-         // printf("buf 0x%lx size 0x%lx endbuf 0x%lx\n", f->R.rsi, f->R.rdx, endbuf);
-         while(endbuf >= startbuf)     // What if endbuf overwrite startbuf?
+         while(endbuf >= startbuf)     // To prevent page fault during the file read, grow stack properly not to confront such problem
          {
             assert_valid_useraddr(endbuf, f->rsp);
             endbuf -= PGSIZE;

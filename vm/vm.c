@@ -214,9 +214,9 @@ vm_get_victim (void) {
 		{
 			continue;
 		}
-
+	
 		t = thread_get_by_id(victim->tid);
-		
+	
 		// printf("VA 0x%lx ", victim->page->va);
 		if(pml4_is_accessed(t->pml4, victim->page->va))
 			pml4_set_accessed(t->pml4, victim->page->va, false);

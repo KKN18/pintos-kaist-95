@@ -22,7 +22,7 @@ static const struct page_operations file_ops = {
 /* The initializer of file vm */
 void
 vm_file_init (void) {
-   
+   // Our implementation doesn't require this function
 }
 
 /* Initialize the file backed page */
@@ -78,16 +78,19 @@ file_backed_destroy (struct page *page) {
    file_close(file_page->file);
 }
 
-/* RYU */
+
 struct mmap_va *find_mmap_file (void *addr) {
-   struct list_elem *e;
    struct thread *t = thread_current();
    struct list *mmap_list = &t->mmap_list;
-   for (e = list_begin(mmap_list); e != list_end(mmap_list); e = list_next(e))
+   struct list_elem *e = list_begin(mmap_list);
+   struct list_elem *nexte;
+   for (e; e != list_end(mmap_list); e = nexte)
    {
-      struct mmap_va *f = list_entry (e, struct mmap_va, mmaplist_elem);
-      if (f->va == addr)
-         return f;
+      nexte = list_next(e);
+      struct mmap_va *mmap_va = list_entry (e, struct mmap_va, mmaplist_elem);
+      ASSERT(mmap_va != NULL);
+      if (mmap_va->start_va == addr)
+         return mmap_va;
    }
    return NULL;
 }
@@ -105,9 +108,9 @@ do_mmap (void *addr, size_t length, int writable,
    struct mmap_va *mmap_va = (struct mmap_va *)malloc(sizeof(struct mmap_va));
    if (mmap_va == NULL) return NULL;
    memset(mmap_va, 0, sizeof(struct mmap_va));
+   mmap_va->start_va = addr;
    list_push_back (&thread_current()->mmap_list, &mmap_va->mmaplist_elem);
    list_init(&mmap_va->page_list);
-   mmap_va->va = addr;
    struct file *refile;
    while(length > 0) {
       size_t read_bytes = length < PGSIZE ? length : PGSIZE;
@@ -134,7 +137,6 @@ do_mmap (void *addr, size_t length, int writable,
       addr += PGSIZE;
       offset += read_bytes;
    }
-   // printf("\n");
    return map_addr; 
 }
 
@@ -142,22 +144,23 @@ do_mmap (void *addr, size_t length, int writable,
 /* Do the munmap */
 void
 do_munmap (void *addr) {
-   struct mmap_va *f = find_mmap_file(addr);
-   if (f == NULL) exit(-1);
-   struct list_elem *e;
-   int i=0;
-   for (e = list_begin(&f->page_list); e != list_end(&f->page_list);)
+   struct mmap_va *mmap_va = find_mmap_file(addr);
+   if (mmap_va == NULL) exit(-1);
+   struct list *page_list = &mmap_va->page_list;
+   struct list_elem *e = list_begin(page_list);
+   struct list_elem *nexte;
+   for (e; e != list_end(page_list); e = nexte)
    {
+      nexte = list_next(e);
       struct page *page = list_entry(e, struct page, mmap_elem);
-      e = list_remove(e);
+      list_remove(e);
       if (page->is_loaded)
       {
-         
          struct list_elem *frame_elem = &page->frame->elem;
          list_remove(frame_elem);
       }
       spt_remove_page(&thread_current()->spt, page);
    }
-   list_remove (&f->mmaplist_elem);
-   free(f);
+   list_remove (&mmap_va->mmaplist_elem);
+   free(mmap_va);
 }

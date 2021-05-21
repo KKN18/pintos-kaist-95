@@ -339,15 +339,15 @@ process_exit (void) {
 		free(fi);
 	}
 
-	struct list_elem *e;
+	struct list_elem *e = list_begin(&curr->mmap_list);
 	
-	for (e = list_begin(&curr->mmap_list); e != list_end(&curr->mmap_list);)
+	for (e; e != list_end(&curr->mmap_list);)
 	{
 		struct mmap_va *f = list_entry (e, struct mmap_va, mmaplist_elem);
 		if (f != NULL)	
 		{
 			e = list_next(e);
-			do_munmap(f->va);
+			do_munmap(f->start_va);
 		}
 		else e = list_next(e);
 	}
@@ -866,17 +866,16 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
-	/* GOJAE */
-	struct frame *frame = page->frame;
-    struct temp *temp = (struct temp *) aux;
-    struct file *file = temp->file;
+	struct frame *frame = page->frame;	// Frame is not yet mapped. It will be mapped in the last of this function
+    struct temp *temp = (struct temp *) aux;	// We passed over the aux with [temp] structure so we defined type of aux as temp
+    struct file *file = temp->file;	// Source file to load
     size_t page_read_bytes = temp->page_read_bytes;
-    size_t page_zero_bytes = PGSIZE - page_read_bytes;
+    size_t page_zero_bytes = PGSIZE - page_read_bytes;	// Calculate page_zero_bytes by substituting read bytes from PGSIZE
     bool writable = temp->writable;
     off_t offset = temp->offset;
 
 	// Load anon_page from temp
-	if (page->type == VM_ANON)
+	if (page->type == VM_ANON)	// When page type is Anonymous Page
 	{
 		struct anon_page *anon_page = &page->anon;
 		anon_page->page_read_bytes = page_read_bytes;
@@ -884,7 +883,7 @@ lazy_load_segment (struct page *page, void *aux) {
 		anon_page->offset = offset;
 	}
 
-	if (page->type == VM_FILE)
+	if (page->type == VM_FILE)	// When page type is Memory Mapped File
 	{
 		struct file_page *file_page = &page->file;
 		file_page->file = file;
@@ -895,23 +894,23 @@ lazy_load_segment (struct page *page, void *aux) {
 
 	ASSERT(file != NULL);
 	
-	file_seek(file, offset);
+	file_seek(file, offset);	// Start reading from the specific offset of file
 	
 	int read;
 	
-	if ((read = file_read(file, frame->kva, page_read_bytes)) != (int)page_read_bytes)
+	if ((read = file_read(file, frame->kva, page_read_bytes)) != (int)page_read_bytes)	// Load file content to memory
 	{
 		if (page->type == VM_ANON)
 			return false;
 	}
-    memset((frame->kva) + page_read_bytes, 0, page_zero_bytes);
+    memset((frame->kva) + page_read_bytes, 0, page_zero_bytes);	// Set left memory with zero bytes
 
 	if(LOG)
 	{
 		printf("	Page(0x%lx) loaded successfully\n", page->va);
 	}
 
-	return install_page(page->va, frame->kva, writable);
+	return install_page(page->va, frame->kva, writable);	// Add map from VA to KVA and mark the writable bit
 }
 
 
@@ -945,18 +944,18 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		/* GOJAE */
-		struct temp *temp = (struct temp *) malloc(sizeof(struct temp));
-		
+		struct temp *temp = (struct temp *) malloc(sizeof(struct temp));	// We use temp structure to pass over the information about loading page
+		if (temp == NULL)
+			return false;
         temp->file = file;
-        temp->page_read_bytes = page_read_bytes;
+        temp->page_read_bytes = page_read_bytes;	// We don't need to get page_zero_bytes because it is always PGSIZE - page_read_bytes
         temp->writable = writable;
 		temp->offset = ofs;
 
-		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
+		if (!vm_alloc_page_with_initializer (VM_ANON, upage,	// Anonymous page will be loaded later if it is required during the program
 					writable, lazy_load_segment, temp))
 			return false;
-		/* Advance. */
+
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
@@ -978,15 +977,15 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
 	struct thread *t = thread_current();
-	success = vm_claim_page(stack_bottom);
+	success = vm_claim_page(stack_bottom);	// Claim the page which have va as stack_bottom and map with proper frame right away
 	
 	// Mark the page as STACK (VM_MARKER_0)
-	struct page *page = spt_find_page(&t->spt, stack_bottom);
-	page->type = VM_MARKER_0;
+	struct page *page = spt_find_page(&t->spt, stack_bottom);	
+	page->type = VM_MARKER_0;	// We used VM_MARKER_0 to express STACK section
 	if (success)
 	{
 		page->is_loaded = true;
-		if_->rsp = USER_STACK;
+		if_->rsp = USER_STACK;	// Set up the rsp value
 	}
 	else
 	{

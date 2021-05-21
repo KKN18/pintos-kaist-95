@@ -514,7 +514,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->prog_file = NULL;
 	t->fd = 2;
 	// END
-	list_init(&t->mmap_list);
+	list_init(&t->mmap_list);	// At the beginning, there is no memory mapped file on the memory so initizlize the list
 
 	old_level = intr_disable();
 	list_push_back(&all_list, &t->allelem);

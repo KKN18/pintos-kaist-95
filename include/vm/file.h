@@ -15,9 +15,9 @@ struct file_page {
 
 
 struct mmap_va {
-    uint8_t *va;				
+    uint8_t *start_va;			
+	struct list page_list;	
     struct list_elem mmaplist_elem;
-    struct list page_list;
 };
 
 
