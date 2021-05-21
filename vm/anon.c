@@ -20,10 +20,8 @@ static const struct page_operations anon_ops = {
 	.type = VM_ANON,
 };
 
-/* Bitmap of swap slot availablities and corresponding lock */
+static size_t PAGE_PER_DISK = PGSIZE / DISK_SECTOR_SIZE;
 static struct bitmap *swap_table;
-static const size_t SECTORS_PER_PAGE = PGSIZE / DISK_SECTOR_SIZE;
-
 
 /* Initialize the data for anonymous pages */
 void
@@ -31,13 +29,13 @@ vm_anon_init (void) {
 	/* TODO: Set up the swap_disk. */
 	swap_disk = disk_get(1, 1);
 	if(swap_disk == NULL)
-		PANIC("no swap disk");
+		exit(-1);
 
 	// Handle swap_disk with bitmap
-	swap_table = bitmap_create(disk_size(swap_disk) / SECTORS_PER_PAGE);
-
+	size_t bit_cnt = disk_size(swap_disk) / PAGE_PER_DISK;
+	swap_table = bitmap_create(bit_cnt);
 	if(swap_table == NULL)
-		PANIC("no swap table");
+		exit(-1);
 
 	// We can use any spot
 	bitmap_set_all(swap_table, true);
@@ -69,7 +67,7 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	anon_page->offset = 0;
 
 	// For swap
-	anon_page->swap_index = -1;
+	anon_page->swap_loc = -1;
 	/* END */
 
 	return true;
@@ -80,22 +78,15 @@ static bool
 anon_swap_in (struct page *page, void *kva) {
 	struct anon_page *anon_page = &page->anon;
 
-	disk_sector_t swap_index = anon_page->swap_index;
-
-	// Check the swap region
-	if(bitmap_test(swap_table, swap_index) == true) {
-		// Still avaliable slot, error
-		PANIC("Error, invalid read access to unassigned swap block");
-	}
-
-	// Read from swap_disk
-	for(size_t i = 0; i < SECTORS_PER_PAGE; i++) {
-		disk_read(swap_disk, swap_index * SECTORS_PER_PAGE + i,
-									kva + (DISK_SECTOR_SIZE * i));
+	disk_sector_t swap_loc = anon_page->swap_loc;
+	size_t start = swap_loc * PAGE_PER_DISK;
+	// Read page from each disk sector
+	for(size_t i = 0; i < PAGE_PER_DISK; i++) {
+		disk_read(swap_disk, start + i,	kva + (DISK_SECTOR_SIZE * i));
 	}
 
 	// Set avaliability as true (We can use this index in the future.)
-	bitmap_set(swap_table, swap_index, true);
+	bitmap_set(swap_table, swap_loc, true);
 	page->is_swapped = false;
 
 	// Mapping in physical memory
@@ -109,23 +100,20 @@ static bool
 anon_swap_out (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
 
-	disk_sector_t swap_index = bitmap_scan(swap_table, 0, 1, true);
+	disk_sector_t swap_loc = bitmap_scan(swap_table, 0, 1, true); // start = 0, cnt = 1, value = true
+	ASSERT(swap_loc < BITMAP_ERROR);
 
-	if(swap_index == BITMAP_ERROR)
-	{
-		PANIC("No more swap slot");
-	}
-
-	// Write to swap_disk
-	for(size_t i = 0; i < SECTORS_PER_PAGE; i++) {
-		disk_write(swap_disk, swap_index * (SECTORS_PER_PAGE) + i,
+	size_t start = swap_loc * PAGE_PER_DISK;
+	// Write page to each disk sector
+	for(size_t i = 0; i < PAGE_PER_DISK; i++) {
+		disk_write(swap_disk, start + i,
 						(page->frame->kva) + (DISK_SECTOR_SIZE * i));
 	}
 
 	// Set avaliability as false.
-	bitmap_set(swap_table, swap_index, false);
-	// Save swap_index for later swap_in
-	anon_page->swap_index = swap_index;
+	bitmap_set(swap_table, swap_loc, false);
+	// Save swap_loc for later swap_in
+	anon_page->swap_loc = swap_loc;
 	page->is_swapped = true;
 
 	return true;
@@ -137,10 +125,6 @@ anon_destroy (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
 	// Nothing to do
 	// No dynamically allocated memory
-	if(page->is_loaded == true)
-	{
-		// file_close(file);
-	}
 }
 
 /* Our Implementation of non-static version */

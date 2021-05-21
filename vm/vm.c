@@ -24,10 +24,6 @@ static struct lock copy_lock;
 /* Frame list */
 static struct list vm_frames;
 
-/* For evcition algorithm */
-static struct list_elem *vm_frames_ptr;
-/* END */
-
 /* Our Implementation */
 static bool add_map (struct page *page, void *kva)
 {
@@ -86,7 +82,6 @@ vm_init (void) {
 	lock_init (&vm_lock);
 	lock_init (&swap_lock);
 	lock_init (&copy_lock);
-	vm_frames_ptr = NULL;
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -204,11 +199,26 @@ static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
 	struct thread *t;
+	struct list_elem *vm_frames_ptr = list_front(&vm_frames);
 	 /* TODO: The policy for eviction is up to you. */
+
+	/* Our Policy */
+	/* At the moment when we need victim, we search frames with the order they pushed 
+	   to the frame list. If the frame is not recently accessed, evict it. 
+	   If the frame is recently accessed, set the access bit false.
+	   Even though we searched whole items in the list but nothing evicted, 
+	   we can get victim in second search because we set the access bit false previously. */
+
 	size_t len = list_size(&vm_frames); 
 	for(int i = 0; ; i++)
 	{
-		victim = vm_frame_next();
+		// Behaves like circular linked list
+		if (vm_frames_ptr == NULL || vm_frames_ptr == list_back(&vm_frames))
+			vm_frames_ptr = list_front (&vm_frames);
+		else
+			vm_frames_ptr = list_next (vm_frames_ptr);
+		
+		victim = list_entry(vm_frames_ptr, struct frame, elem);
 		// Stack is not a candidate for eviction
 		if (victim->page->type == VM_MARKER_0)
 		{
@@ -219,15 +229,14 @@ vm_get_victim (void) {
 	
 		// printf("VA 0x%lx ", victim->page->va);
 		if(pml4_is_accessed(t->pml4, victim->page->va))
-			pml4_set_accessed(t->pml4, victim->page->va, false);
-		else
+			pml4_set_accessed(t->pml4, victim->page->va, false);	// Set Access bit to false
+		else	// If the frame is not recently accessed, evict it
 			break;
 		
 		// Avoid possible infinite loop
 		if(i > len * 10)
 			PANIC("Eviction may have caused infinite loop");
 	}
-	// printf("\n");
 
 	return victim;
 }
@@ -240,9 +249,7 @@ vm_evict_frame (void) {
 	struct thread *t = thread_get_by_id(victim->tid);
 	/* TODO: swap out the victim and return the evicted frame. */
 	ASSERT(victim != NULL && t != NULL);
-	pml4_clear_page(t->pml4, victim->page->va);
-	bool is_dirty = false;
-	is_dirty = pml4_is_dirty(t->pml4, victim->kva);
+	pml4_clear_page(t->pml4, victim->page->va);		// Remove the map between VA and KVA of the frame
 
 	// Call swap_out
 	lock_acquire(&swap_lock);
@@ -252,20 +259,6 @@ vm_evict_frame (void) {
 	return victim;
 }
 
-/* Our Implementation */
-static struct frame * 
-vm_frame_next(void)
-{
-	// Behaves like circular linked list
-	if (vm_frames_ptr == NULL 
-		|| vm_frames_ptr == list_back(&vm_frames))
-		vm_frames_ptr = list_front (&vm_frames);
-	else
-		vm_frames_ptr = list_next (vm_frames_ptr);
-		
-	struct frame *e = list_entry(vm_frames_ptr, struct frame, elem);
-	return e;
-}
 
 /* palloc() and get frame. If there is no available page, evict the page
  * and return it. This always return valid address. That is, if the user pool
@@ -320,10 +313,6 @@ vm_stack_growth (void *addr UNUSED) {
 	return false;
 }
 
-/* Handle the fault on write_protected page */
-static bool
-vm_handle_wp (struct page *page UNUSED) {
-}
 
 /* Return true on success */
 bool
@@ -351,7 +340,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 
 	if(page == NULL)
 	{
-		if (addr < USER_STACK && addr > USER_STACK - (1 << 20))
+		if (addr < USER_STACK && addr > USER_STACK - (1 << 20))  // Stack size 1MB
 		{
 			if (f->rsp == addr + 8 || addr > f->rsp)
 			{

@@ -10,7 +10,7 @@ struct anon_page {
     size_t page_read_bytes;
     bool writable;
     off_t offset;
-    disk_sector_t swap_index;
+    disk_sector_t swap_loc;
 };
 
 void vm_anon_init (void);
