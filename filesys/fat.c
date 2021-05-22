@@ -165,13 +165,15 @@ fat_fs_init (void) {
 cluster_t
 fat_find_empty () {
 	unsigned int *fat = fat_fs->fat;
-	cluster_t index = 0;
+	cluster_t index = 1;
 	while(fat[index] != 0)
 	{
 		index++;
 	}
 
 	// What if fat is full??
+	// Don't use this function
+	// Use free_map_allocate() in fat_create_chain
 
 	return index;
 }

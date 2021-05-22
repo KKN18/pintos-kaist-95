@@ -49,6 +49,8 @@ int deny_cnt (struct inode *inode){
 static disk_sector_t
 byte_to_sector (const struct inode *inode, off_t pos) {
 	ASSERT (inode != NULL);
+	// for문으로 pos / DISK_SECTOR_SIZE 만큼 돌면서
+	// FAT을 traverse하는 코드
 	if (pos < inode->data.length)
 		return inode->data.start + pos / DISK_SECTOR_SIZE;
 	else
@@ -249,6 +251,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 	while (size > 0) {
 		/* Sector to write, starting byte offset within sector. */
 		disk_sector_t sector_idx = byte_to_sector (inode, offset);
+		// if byte_to_sector return -1, fat_creat_chain()
 		int sector_ofs = offset % DISK_SECTOR_SIZE;
 
 		/* Bytes left in inode, bytes left in sector, lesser of the two. */
