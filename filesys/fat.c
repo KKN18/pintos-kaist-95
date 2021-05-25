@@ -162,20 +162,32 @@ fat_fs_init (void) {
 /* FAT handling                                                               */
 /*----------------------------------------------------------------------------*/
 
-cluster_t
-fat_find_empty () {
+bool
+free_fat_allocate (size_t cnt, disk_sector_t *sectorp) {
+
+	ASSERT(cnt == 1);
+
 	unsigned int *fat = fat_fs->fat;
-	cluster_t index = 1;
-	while(fat[index] != 0)
+	bool isFound = false;
+	cluster_t last_index = fat_fs->fat_length - 1;
+	cluster_t free_sector = NULL;
+
+	for(int i = last_index; i >= 1; i--)
 	{
-		index++;
+		if(fat[i] == 0)
+		{
+			isFound = true;
+			free_sector = cluster_to_sector(i);
+		}
 	}
 
-	// What if fat is full??
-	// Don't use this function
-	// Use free_map_allocate() in fat_create_chain
+	if(isFound == false)
+		PANIC("Fat is full");
 
-	return index;
+	if(free_sector != NULL)
+		*sectorp = free_sector;
+	
+	return free_sector != NULL;
 }
 
 /* Add a cluster to the chain.
@@ -185,11 +197,18 @@ cluster_t
 fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
 	unsigned int *fat = fat_fs->fat;
-	cluster_t new_clst = fat_find_empty();
+	cluster_t cluster = 0;
+
+	// Fails to allocate a new cluster
+	if(!free_fat_allocate(1, &cluster))
+		return 0;
+
 	if (clst != 0)
-		fat[clst] = new_clst;
-	fat[new_clst] = -1;
-	return new_clst;
+		fat[clst] = cluster;
+
+	fat[cluster] = EOChain;
+	
+	return cluster;
 }
 
 /* Remove the chain of clusters starting from CLST.
@@ -199,14 +218,20 @@ fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	/* TODO: Your code goes here. */
 	unsigned int *fat = fat_fs->fat;
 	cluster_t cur_clst = clst;
-	while(fat[cur_clst] != -1)
+
+	while(fat[cur_clst] != EOChain && cur_clst != 1)
 	{
 		clst = fat[cur_clst];
 		fat[cur_clst] = 0;
 		cur_clst = clst;
 	}
+
 	fat[cur_clst] = 0;
-	fat[pclst] = -1;
+	
+	if(pclst != 0)
+	{
+		fat[pclst] = EOChain;	
+	}
 }
 
 /* Update a value in the FAT table. */
@@ -214,10 +239,8 @@ void
 fat_put (cluster_t clst, cluster_t val) {
 	/* TODO: Your code goes here. */
 	unsigned int *fat = fat_fs->fat;
-	//cluster_t nxt_clst = fat[clst];
 	fat[clst] = val;
-	//fat[val] = nxt_clst;
-	// 그냥 clst랑 val만 연결하는 건가?
+	return;
 }
 
 /* Fetch a value in the FAT table. */

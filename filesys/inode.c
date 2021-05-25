@@ -6,6 +6,9 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
+/* Our Implementation */
+#include "filesys/fat.h"
+/* END */
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -34,6 +37,8 @@ struct inode {
 	bool removed;                       /* True if deleted, false otherwise. */
 	int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
 	struct inode_disk data;             /* Inode content. */
+	/* Our Implementation */
+	struct lock fat_lock;				/* Lock when accessing FAT */			
 };
 
 /* For Debug */
@@ -51,10 +56,32 @@ byte_to_sector (const struct inode *inode, off_t pos) {
 	ASSERT (inode != NULL);
 	// for문으로 pos / DISK_SECTOR_SIZE 만큼 돌면서
 	// FAT을 traverse하는 코드
-	if (pos < inode->data.length)
-		return inode->data.start + pos / DISK_SECTOR_SIZE;
-	else
+
+	lock_acquire(&inode->fat_lock);
+
+	disk_sector_t start = inode->data.start;
+	cluster_t temp = (cluster_t) start;
+	int cnt = pos / DISK_SECTOR_SIZE;
+
+	if (pos >= inode->data.length)
+	{
+		lock_release(&inode->fat_lock);
 		return -1;
+	}
+
+	while(--cnt)
+	{
+		temp = fat_get(temp);
+	}
+
+	lock_release(&inode->fat_lock);
+
+	return cluster_to_sector(temp);
+	/* Original Code */
+	// if (pos < inode->data.length)
+	// 	return inode->data.start + pos / DISK_SECTOR_SIZE;
+	// else
+	// 	return -1;
 }
 
 /* List of open inodes, so that opening a single inode twice
@@ -88,6 +115,7 @@ inode_create (disk_sector_t sector, off_t length) {
 		size_t sectors = bytes_to_sectors (length);
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
+		/*
 		if (free_map_allocate (sectors, &disk_inode->start)) {
 			disk_write (filesys_disk, sector, disk_inode);
 			if (sectors > 0) {
@@ -98,7 +126,30 @@ inode_create (disk_sector_t sector, off_t length) {
 					disk_write (filesys_disk, disk_inode->start + i, zeros); 
 			}
 			success = true; 
-		} 
+		}
+		*/
+		static char zeros[DISK_SECTOR_SIZE];
+		disk_sector_t start;
+		disk_sector_t temp;
+
+		if((start = fat_create_chain(0)) != 0)
+		{
+			disk_inode->start = start;
+			temp = start;
+			disk_write (filesys_disk, sector, disk_inode);
+			disk_write (filesys_disk, disk_inode->start, zeros);
+		}
+
+		ASSERT(start != 0);
+		
+		for(size_t i = 1; i < sectors; i++)
+		{
+			if((temp = fat_create_chain(temp)) != 0)
+			{
+				disk_write(filesys_disk, cluster_to_sector(temp), zeros);
+			}
+		}
+
 		free (disk_inode);
 	}
 	return success;
@@ -134,6 +185,9 @@ inode_open (disk_sector_t sector) {
 	inode->deny_write_cnt = 0;
 	inode->removed = false;
 	disk_read (filesys_disk, inode->sector, &inode->data);
+
+	lock_init(&inode->fat_lock);
+
 	return inode;
 }
 
@@ -196,6 +250,11 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 	while (size > 0) {
 		/* Disk sector to read, starting byte offset within sector. */
 		disk_sector_t sector_idx = byte_to_sector (inode, offset);
+
+		// Read beyond file length
+		if(sector_idx == -1)
+			break;
+
 		int sector_ofs = offset % DISK_SECTOR_SIZE;
 
 		/* Bytes left in inode, bytes left in sector, lesser of the two. */
@@ -251,7 +310,39 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 	while (size > 0) {
 		/* Sector to write, starting byte offset within sector. */
 		disk_sector_t sector_idx = byte_to_sector (inode, offset);
+
+		/* Our Implementation */
 		// if byte_to_sector return -1, fat_creat_chain()
+		if(sector_idx == -1)
+		{
+			lock_acquire(&inode->fat_lock);
+
+			disk_sector_t start = inode->data.start;
+			cluster_t temp = (cluster_t) start;
+			cluster_t prev = temp;
+
+			while(temp != EOChain)
+			{
+				prev = temp;
+				temp = fat_get(temp);
+			}
+
+			temp = prev;
+			disk_sector_t rem = (offset - inode->data.length) / DISK_SECTOR_SIZE;
+
+			for(int i = 0; i < rem; i++)
+			{
+				if(temp = fat_create_chain(temp) == 0)
+				{
+					PANIC("Write beyond panic");
+				}
+			}
+
+			sector_idx = temp;
+			inode->data.length = offset;
+			lock_release(&inode->fat_lock);
+		}
+
 		int sector_ofs = offset % DISK_SECTOR_SIZE;
 
 		/* Bytes left in inode, bytes left in sector, lesser of the two. */
