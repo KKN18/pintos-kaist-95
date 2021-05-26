@@ -331,3 +331,14 @@ cluster_to_sector (cluster_t clst) {
 	struct fat_boot *bs = &fat_fs->bs;
 	return clst * (bs->sectors_per_cluster);
 }
+
+disk_sector_t
+fat_to_data_cluster (cluster_t clst) {
+	if(LOG)
+	{
+		printf("fat_to_data_cluster\n");
+	}
+	
+	disk_sector_t data_start = &fat_fs->data_start;
+	return data_start + clst;
+}
