@@ -37,4 +37,8 @@ cluster_t fat_get (cluster_t clst);
 void fat_put (cluster_t clst, cluster_t val);
 disk_sector_t cluster_to_sector (cluster_t clst);
 
+/* Our Implementation */
+bool free_fat_allocate (size_t cnt, disk_sector_t *sectorp);
+void free_fat_release (disk_sector_t sector, size_t cnt);
+
 #endif /* filesys/fat.h */

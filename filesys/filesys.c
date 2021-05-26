@@ -9,6 +9,7 @@
 #include "devices/disk.h"
 /* Our Implementation */
 #include "threads/thread.h"
+#include "filesys/fat.h"
 
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
@@ -63,15 +64,22 @@ filesys_done (void) {
  * Fails if a file named NAME already exists,
  * or if internal memory allocation fails. */
 bool
-filesys_create (const char *name, off_t initial_size) {
+filesys_create (const char *path, off_t initial_size) {
 	disk_sector_t inode_sector = 0;
-	struct dir *dir = dir_open_root ();
+	
+	// RYU
+	char name[PATH_MAX_LEN + 1];
+	struct dir *dir = parse_path(path, name);
+
+
 	bool success = (dir != NULL
-			&& free_map_allocate (1, &inode_sector)
+			&& free_fat_allocate (1, &inode_sector)
 			&& inode_create (inode_sector, initial_size, 0)
 			&& dir_add (dir, name, inode_sector));
+
 	if (!success && inode_sector != 0)
-		free_map_release (inode_sector, 1);
+		free_fat_release (inode_sector, 1);
+	
 	dir_close (dir);
 
 	return success;
@@ -82,15 +90,16 @@ filesys_create (const char *name, off_t initial_size) {
  * otherwise.
  * Fails if no file named NAME exists,
  * or if an internal memory allocation fails. */
-struct file * filesys_open (const char *name) {
-	struct dir *dir = dir_open_root ();
+// RYU
+struct file * filesys_open (const char *path) {
+	char name[PATH_MAX_LEN + 1];
+	struct dir *dir = parse_path (path, name);
+	if (dir == NULL)
+		return NULL;
 	struct inode *inode = NULL;
-
-	if (dir != NULL)
-		dir_lookup (dir, name, &inode);
+	dir_lookup (dir, name, &inode);
 	dir_close (dir);
-	struct file *ret = file_open (inode);
-	return ret;
+	return file_open (inode);
 }
 
 
@@ -98,12 +107,26 @@ struct file * filesys_open (const char *name) {
  * Returns true if successful, false on failure.
  * Fails if no file named NAME exists,
  * or if an internal memory allocation fails. */
+// RYU
 bool
-filesys_remove (const char *name) {
-	struct dir *dir = dir_open_root ();
-	bool success = dir != NULL && dir_remove (dir, name);
-	dir_close (dir);
+filesys_remove (const char *path) {
+	char name[PATH_MAX_LEN + 1];
+	struct dir *dir = parse_path (path, name);
 
+	struct inode *inode;
+	dir_lookup (dir, name, &inode);
+
+	struct dir *cur_dir = NULL;
+	char temp[PATH_MAX_LEN + 1];
+
+	bool success = false;
+	if (!inode_is_dir (inode) ||
+		((cur_dir = dir_open (inode)) && !dir_readdir (cur_dir, temp)))
+		success = dir != NULL && dir_remove (dir, name);
+	dir_close (dir);
+	
+	if (cur_dir)
+		dir_close (cur_dir);
 	return success;
 }
 
@@ -115,6 +138,8 @@ do_format (void) {
 #ifdef EFILESYS
 	/* Create FAT and save it to the disk. */
 	fat_create ();
+	//if (!dir_create (ROOT_DIR_SECTOR, 16))
+	//	PANIC ("root directory creation failed");
 	fat_close ();
 #else
 	free_map_create ();
@@ -123,5 +148,98 @@ do_format (void) {
 	free_map_close ();
 #endif
 
+	// RYU
+	struct dir *root = dir_open_root ();
+	dir_add (root, ".", ROOT_DIR_SECTOR);
+	dir_add (root, "..", ROOT_DIR_SECTOR);  
+	dir_close (root);
+
 	printf ("done.\n");
+}
+
+/* Our Implementation */
+// RYU
+struct dir *
+parse_path (const char *path_o, char *file_name)
+{
+	struct dir *dir = NULL;
+
+	// 기본 예외 처리
+	if (!path_o || !file_name)
+		return NULL;
+	if (strlen (path_o) == 0)
+		return NULL;
+
+	char path[PATH_MAX_LEN + 1];
+	strlcpy (path, path_o, PATH_MAX_LEN);
+
+	if (path[0] == '/')
+		dir = dir_open_root ();
+	else
+		dir = dir_reopen (thread_current ()->working_dir);
+
+	// 아이노드가 어떤 이유로 제거되었거나 디렉터리가 아닌 경우
+	if (!inode_is_dir (dir_get_inode (dir)))
+		return NULL;
+
+	char *token, *next_token, *save_ptr;
+	token = strtok_r (path, "/", &save_ptr);
+	next_token = strtok_r (NULL, "/", &save_ptr);
+
+	if (token == NULL)
+	{
+		strlcpy (file_name, ".", PATH_MAX_LEN);
+		return dir;
+	}
+
+	while (token && next_token)
+	{
+		struct inode *inode = NULL;
+		if (!dir_lookup (dir, token, &inode))
+		{
+			dir_close (dir);
+			return NULL;
+		}
+		if (!inode_is_dir (inode))
+		{
+			dir_close (dir);
+			return NULL;
+		}
+		dir_close (dir);
+		dir = dir_open (inode);
+
+		token = next_token;
+		next_token = strtok_r (NULL, "/", &save_ptr);
+	}
+
+	strlcpy (file_name, token, PATH_MAX_LEN);
+	return dir;
+}
+
+// RYU
+bool
+filesys_create_dir (const char *path)
+{
+	disk_sector_t inode_sector = 0;
+	char name[PATH_MAX_LEN + 1];
+	struct dir *dir = parse_path (path, name);
+
+	bool success = (dir != NULL
+					&& free_fat_allocate (1, &inode_sector)
+					&& dir_create (inode_sector, 16)
+					&& dir_add (dir, name, inode_sector));
+	if (!success && inode_sector != 0)
+		free_fat_release (inode_sector, 1);
+
+	
+	if (success)
+	{
+		struct dir *new_dir = dir_open (inode_open (inode_sector));
+		dir_add (new_dir, ".", inode_sector);
+		dir_add (new_dir, "..", inode_get_inumber (dir_get_inode (dir)));
+		dir_close (new_dir);
+	}
+
+	dir_close (dir);
+	return success;
 }

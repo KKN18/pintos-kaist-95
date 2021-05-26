@@ -176,6 +176,10 @@ dir_remove (struct dir *dir, const char *name) {
 	ASSERT (dir != NULL);
 	ASSERT (name != NULL);
 
+	// RYU
+	if (!strcmp (name, ".") || !strcmp (name, ".."))
+    	return false;
+
 	/* Find directory entry. */
 	if (!lookup (dir, name, &e, &ofs))
 		goto done;

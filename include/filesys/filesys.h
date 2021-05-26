@@ -9,6 +9,9 @@
 #define FREE_MAP_SECTOR 0       /* Free map file inode sector. */
 #define ROOT_DIR_SECTOR 1       /* Root directory file inode sector. */
 
+// RYU
+#define PATH_MAX_LEN 14
+
 /* Disk used for file system. */
 extern struct disk *filesys_disk;
 
@@ -17,5 +20,8 @@ void filesys_done (void);
 bool filesys_create (const char *name, off_t initial_size);
 struct file *filesys_open (const char *name);
 bool filesys_remove (const char *name);
+/* Our Implementation */
+// RYU
+struct dir *parse_path (const char *, char *);
 
 #endif /* filesys/filesys.h */

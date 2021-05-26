@@ -190,6 +190,15 @@ free_fat_allocate (size_t cnt, disk_sector_t *sectorp) {
 	return free_sector != NULL;
 }
 
+void
+free_fat_release (disk_sector_t sector, size_t cnt) {
+
+	ASSERT(cnt == 1);
+
+	fat_remove_chain((cluster_t)sector, 0);
+	return;
+}
+
 /* Add a cluster to the chain.
  * If CLST is 0, start a new chain.
  * Returns 0 if fails to allocate a new cluster. */

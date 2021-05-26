@@ -318,31 +318,68 @@ void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset)
 }
 
 /* System calls for Project #4 */ 
-bool chdir (const char *dir) 
+// RYU
+bool chdir (const char *dirname) 
 {
+   char path[PATH_MAX_LEN + 1];
+   strlcpy (path, dirname, PATH_MAX_LEN);
+   strlcat (path, "/0", PATH_MAX_LEN);
+
+   char name[PATH_MAX_LEN + 1];
+   struct dir *dir = parse_path (path, name);
+   if (!dir)
+      return false;
+   dir_close (thread_current ()->working_dir);
+   thread_current ()->working_dir = dir;
    return true;
 }
 
 bool mkdir (const char *dir) 
 {
-   return true;
+   return filesys_create_dir (dir);
 }
 
-bool readdir (int fd, char name[READDIR_MAX_LEN + 1]) 
+bool readdir (int fd, char *name) 
 {
-   return true;
+   struct file *f = search_file (fd);
+   if (f == NULL)
+      exit (-1);
+   // 내부 아이노드 가져오기 및 디렉터리 열기
+   struct inode *inode = file_get_inode (f);
+   if (!inode || !inode_is_dir (inode))
+      return false;
+   struct dir *dir = dir_open (inode);
+   if (!dir)
+      return false;
+   int i;
+   bool result = true;
+   off_t *pos = (off_t *)f + 1;
+   for (i = 0; i <= *pos && result; i++)
+      result = dir_readdir (dir, name);
+   if (i <= *pos == false)
+      (*pos)++;
+   return result;
 }
+
 
 bool isdir (int fd) 
 {
-   return true;
+   /* RYU */
+   struct file *f = search_file(fd);
+
+   if(f == NULL)
+      exit(-1);
+
+   return inode_is_dir(file_get_inode(f));
 }
 
 int inumber (int fd)
 {
-   return true;
+   struct file *f = search_file (fd);
+   if (f == NULL)
+      exit (-1);
+   return inode_get_inumber (file_get_inode (f));
 }
-
 int symlink (const char* target, const char* linkpath)
 {
    return true;
