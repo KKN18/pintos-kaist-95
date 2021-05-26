@@ -40,5 +40,6 @@ disk_sector_t cluster_to_sector (cluster_t clst);
 /* Our Implementation */
 bool free_fat_allocate (size_t cnt, disk_sector_t *sectorp);
 void free_fat_release (disk_sector_t sector, size_t cnt);
+void fat_print();
 
 #endif /* filesys/fat.h */

@@ -8,6 +8,8 @@
 #include "threads/malloc.h"
 /* Our Implementation */
 #include "filesys/fat.h"
+
+#define LOG 1
 /* END */
 
 /* Identifies an inode. */
@@ -56,6 +58,11 @@ int deny_cnt (struct inode *inode){
  * POS. */
 static disk_sector_t
 byte_to_sector (const struct inode *inode, off_t pos) {
+	if(LOG)
+	{
+		printf("byte_to_sector\n");	
+	}
+		
 	ASSERT (inode != NULL);
 	// for문으로 pos / DISK_SECTOR_SIZE 만큼 돌면서
 	// FAT을 traverse하는 코드
@@ -94,6 +101,10 @@ static struct list open_inodes;
 /* Initializes the inode module. */
 void
 inode_init (void) {
+	if(LOG)
+	{
+		printf("inode_init\n");	
+	}
 	list_init (&open_inodes);
 }
 
@@ -106,6 +117,10 @@ inode_init (void) {
 // Also get is_dir in inode_create()
 bool
 inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
+	if(LOG)
+	{
+		printf("inode_create\n");	
+	}
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
 
@@ -148,7 +163,7 @@ inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
 
 		ASSERT(start != 0);
 		
-		for(size_t i = 1; i < sectors; i++)
+		for(size_t i = 0; i < sectors; i++)
 		{
 			if((temp = fat_create_chain(temp)) != 0)
 			{
@@ -156,8 +171,11 @@ inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
 			}
 		}
 
+		success = true;
 		free (disk_inode);
 	}
+	fat_print();
+	// ASSERT(0);
 	return success;
 }
 
@@ -166,6 +184,10 @@ inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
  * Returns a null pointer if memory allocation fails. */
 struct inode *
 inode_open (disk_sector_t sector) {
+	if(LOG)
+	{
+		printf("inode_open\n");	
+	}
 	struct list_elem *e;
 	struct inode *inode;
 
@@ -200,6 +222,10 @@ inode_open (disk_sector_t sector) {
 /* Reopens and returns INODE. */
 struct inode *
 inode_reopen (struct inode *inode) {
+	if(LOG)
+	{
+		printf("inode_reopen\n");	
+	}
 	if (inode != NULL)
 		inode->open_cnt++;
 	return inode;
@@ -216,6 +242,10 @@ inode_get_inumber (const struct inode *inode) {
  * If INODE was also a removed inode, frees its blocks. */
 void
 inode_close (struct inode *inode) {
+	if(LOG)
+	{
+		printf("inode_close\n");	
+	}
 	/* Ignore null pointer. */
 	if (inode == NULL)
 		return;
@@ -240,6 +270,10 @@ inode_close (struct inode *inode) {
  * has it open. */
 void
 inode_remove (struct inode *inode) {
+	if(LOG)
+	{
+		printf("inode_remove\n");	
+	}
 	ASSERT (inode != NULL);
 	inode->removed = true;
 }
@@ -249,6 +283,10 @@ inode_remove (struct inode *inode) {
  * than SIZE if an error occurs or end of file is reached. */
 off_t
 inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
+	if(LOG)
+	{
+		printf("inode_read_at\n");	
+	}
 	uint8_t *buffer = buffer_;
 	off_t bytes_read = 0;
 	uint8_t *bounce = NULL;
@@ -306,6 +344,10 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 off_t
 inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		off_t offset) {
+	if(LOG)
+	{
+		printf("inode_write_at\n");	
+	}
 	const uint8_t *buffer = buffer_;
 	off_t bytes_written = 0;
 	uint8_t *bounce = NULL;
@@ -398,6 +440,10 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 	void
 inode_deny_write (struct inode *inode) 
 {
+	if(LOG)
+	{
+		printf("inode_deny_write\n");	
+	}
 	inode->deny_write_cnt++;
 	ASSERT (inode->deny_write_cnt <= inode->open_cnt);
 }
@@ -407,6 +453,10 @@ inode_deny_write (struct inode *inode)
  * inode_deny_write() on the inode, before closing the inode. */
 void
 inode_allow_write (struct inode *inode) {
+	if(LOG)
+	{
+		printf("inode_allow_write\n");	
+	}
 	ASSERT (inode->deny_write_cnt > 0);
 	ASSERT (inode->deny_write_cnt <= inode->open_cnt);
 	inode->deny_write_cnt--;
@@ -415,6 +465,10 @@ inode_allow_write (struct inode *inode) {
 /* Returns the length, in bytes, of INODE's data. */
 off_t
 inode_length (const struct inode *inode) {
+	if(LOG)
+	{
+		printf("inode_length\n");	
+	}
 	return inode->data.length;
 }
 
@@ -423,6 +477,10 @@ inode_length (const struct inode *inode) {
 bool
 inode_is_dir (const struct inode *inode)
 {
+	if(LOG)
+	{
+		printf("inode_is_dir\n");	
+	}
 	struct inode_disk inode_disk;
 	if (inode->removed)
 		return false;

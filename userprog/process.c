@@ -356,7 +356,9 @@ process_exit (void) {
 	}
 
 	/* RYU */
+	ASSERT(0);
 	dir_close(curr->working_dir);
+	ASSERT(0);
 
 	curr->fd = 2;
 	// ASSERT(file_deny_cnt(curr->prog_file) != 0);

@@ -11,6 +11,8 @@
 #include "threads/thread.h"
 #include "filesys/fat.h"
 
+#define LOG 1
+
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
 
@@ -20,6 +22,11 @@ static void do_format (void);
  * If FORMAT is true, reformats the file system. */
 void
 filesys_init (bool format) {
+	if(LOG)
+	{
+		printf("filesys_init\n");	
+	}
+		
 	filesys_disk = disk_get (0, 1);
 	if (filesys_disk == NULL)
 		PANIC ("hd0:1 (hdb) not present, file system initialization failed");
@@ -51,6 +58,11 @@ filesys_init (bool format) {
  * to disk. */
 void
 filesys_done (void) {
+	if(LOG)
+	{
+		printf("filesys_done\n");	
+	}
+		
 	/* Original FS */
 #ifdef EFILESYS
 	fat_close ();
@@ -65,6 +77,12 @@ filesys_done (void) {
  * or if internal memory allocation fails. */
 bool
 filesys_create (const char *path, off_t initial_size) {
+	
+	if(LOG)
+	{
+		printf("filesys_create: %s, initial_size: %d\n", path, initial_size);	
+	}
+		
 	disk_sector_t inode_sector = 0;
 	
 	// RYU
@@ -92,6 +110,11 @@ filesys_create (const char *path, off_t initial_size) {
  * or if an internal memory allocation fails. */
 // RYU
 struct file * filesys_open (const char *path) {
+	if(LOG)
+	{
+		printf("filesys_open\n");	
+	}
+		
 	char name[PATH_MAX_LEN + 1];
 	struct dir *dir = parse_path (path, name);
 	if (dir == NULL)
@@ -110,6 +133,12 @@ struct file * filesys_open (const char *path) {
 // RYU
 bool
 filesys_remove (const char *path) {
+	
+	if(LOG)
+	{
+		printf("filesys_remove: %s\n", path);	
+	}
+		
 	char name[PATH_MAX_LEN + 1];
 	struct dir *dir = parse_path (path, name);
 
@@ -133,13 +162,18 @@ filesys_remove (const char *path) {
 /* Formats the file system. */
 static void
 do_format (void) {
+	if(LOG)
+	{
+		printf("do_format\n");	
+	}
+		
 	printf ("Formatting file system...");
 
 #ifdef EFILESYS
 	/* Create FAT and save it to the disk. */
 	fat_create ();
-	//if (!dir_create (ROOT_DIR_SECTOR, 16))
-	//	PANIC ("root directory creation failed");
+	if (!dir_create (ROOT_DIR_SECTOR, 16))
+		PANIC ("root directory creation failed");
 	fat_close ();
 #else
 	free_map_create ();
@@ -147,9 +181,10 @@ do_format (void) {
 		PANIC ("root directory creation failed");
 	free_map_close ();
 #endif
-
+	
 	// RYU
 	struct dir *root = dir_open_root ();
+	ASSERT(0);
 	dir_add (root, ".", ROOT_DIR_SECTOR);
 	dir_add (root, "..", ROOT_DIR_SECTOR);  
 	dir_close (root);
@@ -162,6 +197,11 @@ do_format (void) {
 struct dir *
 parse_path (const char *path_o, char *file_name)
 {
+	if(LOG)
+	{
+		printf("parse_path\n");	
+	}
+		
 	struct dir *dir = NULL;
 
 	// 기본 예외 처리
@@ -220,6 +260,11 @@ parse_path (const char *path_o, char *file_name)
 bool
 filesys_create_dir (const char *path)
 {
+	if(LOG)
+	{
+		printf("filesys_create_dir: %s\n", path);	
+	}
+		
 	disk_sector_t inode_sector = 0;
 	char name[PATH_MAX_LEN + 1];
 	struct dir *dir = parse_path (path, name);
