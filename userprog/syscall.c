@@ -285,6 +285,7 @@ void close (int fd)
      delete_file (fd);
    lock_release(&file_access);
 }
+
 /*
 int dup2 (int oldfd, int newfd)
 {
@@ -301,7 +302,8 @@ int dup2 (int oldfd, int newfd)
 }
 */
 
-void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset) 
+{
    if (!is_user_vaddr(addr) || !is_user_vaddr(length) || !is_user_vaddr(writable) || !is_user_vaddr(fd) || !is_user_vaddr(offset))
       return NULL;
    if (fd == 0 || fd == 1)
@@ -313,6 +315,34 @@ void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset) 
    uint8_t *res = do_mmap(addr, length, writable, file, offset);
    lock_release(&file_access);
    return res;
+}
+
+/* System calls for Project #4 */ 
+bool chdir (const char *dir) 
+{
+   return true;
+}
+
+bool mkdir (const char *dir) 
+{
+   return true;
+}
+bool readdir (int fd, char name[READDIR_MAX_LEN + 1]) 
+{
+   return true;
+}
+bool isdir (int fd) 
+{
+   return true;
+}
+int inumber (int fd)
+{
+   return true;
+}
+
+int symlink (const char* target, const char* linkpath)
+{
+   return true;
 }
 
 void syscall_print(int n)
@@ -465,11 +495,28 @@ syscall_handler (struct intr_frame *f) {
          close(f->R.rdi);
          break;
       case SYS_MMAP:
+         // assert_valid_useraddr(f->R.rdi, f->rsp);
+         // assert_valid_useraddr(f->R.rsi, f->rsp);
+         // assert_valid_useraddr(f->R.rdx, f->rsp);
+         // assert_valid_useraddr(f->R.r10, f->rsp);
+         // assert_valid_useraddr(f->R.r8, f->rsp);
          f->R.rax = call_mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
          break;
       case SYS_MUNMAP:
-         assert_valid_useraddr(f->R.rdi, f->rsp);
+         // assert_valid_useraddr(f->R.rdi, f->rsp);
          do_munmap(f->R.rdi);
+         break;
+      case SYS_CHDIR:
+         break;
+      case SYS_MKDIR:
+         break;
+      case SYS_READDIR:
+         break;
+      case SYS_ISDIR:
+         break;
+      case SYS_INUMBER:
+         break;
+      case SYS_SYMLINK:
          break;
 
       /*
