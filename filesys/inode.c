@@ -71,6 +71,10 @@ byte_to_sector (const struct inode *inode, off_t pos) {
 
 	disk_sector_t start = inode->data.start;
 	cluster_t temp = (cluster_t) start;
+
+	printf("	temp: %d\n", temp);
+	ASSERT(0);
+
 	int cnt = pos / DISK_SECTOR_SIZE;
 
 	if (pos >= inode->data.length)
@@ -153,17 +157,21 @@ inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
 		disk_sector_t start;
 		disk_sector_t temp;
 
+		fat_put(sector, EOChain);
+
 		if((start = fat_create_chain(0)) != 0)
 		{
 			disk_inode->start = start;
 			temp = start;
+			// Write disk_inode
 			disk_write (filesys_disk, sector, disk_inode);
+			// Write first sector of file
 			disk_write (filesys_disk, disk_inode->start, zeros);
 		}
 
 		ASSERT(start != 0);
 		
-		for(size_t i = 0; i < sectors; i++)
+		for(size_t i = 1; i < sectors; i++)
 		{
 			if((temp = fat_create_chain(temp)) != 0)
 			{
@@ -285,7 +293,8 @@ off_t
 inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 	if(LOG)
 	{
-		printf("inode_read_at\n");	
+		printf("inode_read_at\n");
+		printf("	sector_number: %d\n", inode->sector);
 	}
 	uint8_t *buffer = buffer_;
 	off_t bytes_read = 0;

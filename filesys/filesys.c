@@ -184,7 +184,6 @@ do_format (void) {
 	
 	// RYU
 	struct dir *root = dir_open_root ();
-	ASSERT(0);
 	dir_add (root, ".", ROOT_DIR_SECTOR);
 	dir_add (root, "..", ROOT_DIR_SECTOR);  
 	dir_close (root);
