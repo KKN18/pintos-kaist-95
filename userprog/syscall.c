@@ -327,14 +327,17 @@ bool mkdir (const char *dir)
 {
    return true;
 }
+
 bool readdir (int fd, char name[READDIR_MAX_LEN + 1]) 
 {
    return true;
 }
+
 bool isdir (int fd) 
 {
    return true;
 }
+
 int inumber (int fd)
 {
    return true;
@@ -507,18 +510,31 @@ syscall_handler (struct intr_frame *f) {
          do_munmap(f->R.rdi);
          break;
       case SYS_CHDIR:
+         assert_valid_useraddr(f->R.rdi, f->rsp);
+         f->R.rax = chdir(f->R.rdi);
          break;
       case SYS_MKDIR:
+         assert_valid_useraddr(f->R.rdi, f->rsp);
+         f->R.rax = mkdir(f->R.rdi);
          break;
       case SYS_READDIR:
+         assert_valid_useraddr(f->R.rdi, f->rsp);
+         assert_valid_useraddr(f->R.rsi, f->rsp);
+         f->R.rax = readdir(f->R.rdi, f->R.rsi);
          break;
       case SYS_ISDIR:
+         assert_valid_useraddr(f->R.rdi, f->rsp);
+         f->R.rax = isdir(f->R.rdi);
          break;
       case SYS_INUMBER:
+         assert_valid_useraddr(f->R.rdi, f->rsp);
+         f->R.rax = inumber(f->R.rdi);
          break;
       case SYS_SYMLINK:
+         assert_valid_useraddr(f->R.rdi, f->rsp);
+         assert_valid_useraddr(f->R.rsi, f->rsp);
+         f->R.rax = symlink(f->R.rdi, f->R.rsi);
          break;
-
       /*
       case default:
          printf("Unknown syscall\n");

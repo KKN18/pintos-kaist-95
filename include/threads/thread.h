@@ -133,6 +133,9 @@ struct thread {
 	struct list mmap_list;
 #endif
 
+	/* RYU */
+	struct dir *working_dir;
+
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */

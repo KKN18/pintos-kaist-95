@@ -239,6 +239,12 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	/* RYU */
+	if(thread_current()->working_dir != NULL)
+	{
+		t->working_dir = dir_reopen(thread_current()->working_dir);
+	}
+
 	/* Our Implementation */
 	list_push_back (&thread_current ()->child_list, &t->child_elem);
 	// t->fd_table = (struct file **)malloc(sizeof(struct file *) * FD_MAX);
@@ -532,6 +538,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->wake_tick = 0;
 	list_init(&t->donation_list);
 	t->base_priority = priority;
+
+	/* RYU */
+	t->working_dir = NULL;
+
 	/* END */
 }
 

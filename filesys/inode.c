@@ -19,7 +19,10 @@ struct inode_disk {
 	disk_sector_t start;                /* First data sector. */
 	off_t length;                       /* File size in bytes. */
 	unsigned magic;                     /* Magic number. */
-	uint32_t unused[125];               /* Not used. */
+	
+	uint32_t unused[124];               /* Not used. */
+
+	uint32_t is_dir						/* This is directory or not */
 };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -38,7 +41,7 @@ struct inode {
 	int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
 	struct inode_disk data;             /* Inode content. */
 	/* Our Implementation */
-	struct lock fat_lock;				/* Lock when accessing FAT */			
+	struct lock *fat_lock;				/* Lock when accessing FAT */			
 };
 
 /* For Debug */
@@ -99,8 +102,10 @@ inode_init (void) {
  * disk.
  * Returns true if successful.
  * Returns false if memory or disk allocation fails. */
+/* Our Implementation */
+// Also get is_dir in inode_create()
 bool
-inode_create (disk_sector_t sector, off_t length) {
+inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
 
@@ -115,6 +120,7 @@ inode_create (disk_sector_t sector, off_t length) {
 		size_t sectors = bytes_to_sectors (length);
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
+		disk_inode->is_dir = is_dir;
 		/*
 		if (free_map_allocate (sectors, &disk_inode->start)) {
 			disk_write (filesys_disk, sector, disk_inode);
@@ -410,4 +416,17 @@ inode_allow_write (struct inode *inode) {
 off_t
 inode_length (const struct inode *inode) {
 	return inode->data.length;
+}
+
+/* RYU */
+// Return true if this inode is a directory, otherwise, return false.
+bool
+inode_is_dir (const struct inode *inode)
+{
+	struct inode_disk inode_disk;
+	if (inode->removed)
+		return false;
+	if (!get_disk_inode (inode, &inode_disk))
+		return false;
+	return inode_disk.is_dir;
 }

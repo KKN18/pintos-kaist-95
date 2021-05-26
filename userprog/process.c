@@ -355,6 +355,9 @@ process_exit (void) {
 		else e = list_next(e);
 	}
 
+	/* RYU */
+	dir_close(curr->working_dir);
+
 	curr->fd = 2;
 	// ASSERT(file_deny_cnt(curr->prog_file) != 0);
 	file_close(curr->prog_file);
