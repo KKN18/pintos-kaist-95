@@ -9,7 +9,7 @@
 /* Our Implementation */
 #include "filesys/fat.h"
 
-#define LOG 1
+#define LOG 0
 /* END */
 
 /* Identifies an inode. */
@@ -72,8 +72,7 @@ byte_to_sector (const struct inode *inode, off_t pos) {
 	disk_sector_t start = inode->data.start;
 	cluster_t temp = (cluster_t) start;
 
-	printf("	temp: %d\n", temp);
-	ASSERT(0);
+	//printf("	temp: %d\n", temp);
 
 	int cnt = pos / DISK_SECTOR_SIZE;
 
@@ -82,12 +81,11 @@ byte_to_sector (const struct inode *inode, off_t pos) {
 		lock_release(&inode->fat_lock);
 		return -1;
 	}
-
-	while(--cnt)
+	while(cnt--)
 	{
+		//printf("temp = %d\n", temp);
 		temp = fat_get(temp);
 	}
-
 	lock_release(&inode->fat_lock);
 
 	return cluster_to_sector(temp);
@@ -162,7 +160,7 @@ inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
 		if((start = fat_create_chain(0)) != 0)
 		{
 			disk_inode->start = start;
-			printf("	start: %d\n", start);
+			// printf("	start: %d\n", start);
 			temp = start;
 			// Write disk_inode
 			disk_write (filesys_disk, fat_to_data_cluster(sector), disk_inode);
@@ -172,7 +170,7 @@ inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
 
 		ASSERT(start != 0);
 
-		printf("	sectors: %d\n", sectors);
+		// printf("	sectors: %d\n", sectors);
 		
 		for(size_t i = 1; i < sectors; i++)
 		{
@@ -186,7 +184,7 @@ inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
 		success = true;
 		// free (disk_inode);
 	}
-	fat_print();
+	// fat_print();
 	// ASSERT(0);
 	return success;
 }
@@ -212,7 +210,6 @@ inode_open (disk_sector_t sector) {
 			return inode; 
 		}
 	}
-
 	/* Allocate memory. */
 	inode = malloc (sizeof *inode);
 	if (inode == NULL)
@@ -224,10 +221,9 @@ inode_open (disk_sector_t sector) {
 	inode->open_cnt = 1;
 	inode->deny_write_cnt = 0;
 	inode->removed = false;
-	disk_read (filesys_disk, inode->sector, &inode->data);
-
+	disk_read (filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
+	// printf("start = %d\n", inode->data.start);
 	lock_init(&inode->fat_lock);
-
 	return inode;
 }
 
@@ -258,6 +254,7 @@ inode_close (struct inode *inode) {
 	{
 		printf("inode_close\n");	
 	}
+	ASSERT(inode != NULL);
 	/* Ignore null pointer. */
 	if (inode == NULL)
 		return;
@@ -269,13 +266,15 @@ inode_close (struct inode *inode) {
 
 		/* Deallocate blocks if removed. */
 		if (inode->removed) {
-			free_map_release (inode->sector, 1);
-			free_map_release (inode->data.start,
+			// printf("inode removed\n");
+			free_fat_release (inode->sector, 1);
+			free_fat_release (inode->data.start,
 					bytes_to_sectors (inode->data.length)); 
 		}
-
 		free (inode); 
+		// printf("free inode\n");
 	}
+	// printf("finish inode close\n");
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who
@@ -445,7 +444,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		bytes_written += chunk_size;
 	}
 	free (bounce);
-
+	// printf("finish inode_write_at\n");
 	return bytes_written;
 }
 

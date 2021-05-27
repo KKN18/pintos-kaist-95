@@ -437,6 +437,24 @@ void syscall_print(int n)
       case SYS_MUNMAP:
          printf("SYS_MUMMAP\n");
          break;
+      case SYS_CHDIR:
+         printf("SYS_CHDIR\n");
+         break;
+      case SYS_MKDIR:
+         printf("SYS_MKDIR\n");
+         break;
+      case SYS_READDIR:
+         printf("SYS_READDIR\n");
+         break;
+      case SYS_ISDIR:
+         printf("SYS_ISDIR\n");
+         break;
+      case SYS_INUMBER:
+         printf("SYS_INUMBER\n");
+         break;
+      case SYS_SYMLINK:
+         printf("SYS_SYMLINK\n");
+         break;
    }
 }
 
@@ -447,7 +465,7 @@ void
 syscall_handler (struct intr_frame *f) {
    // TODO: Your implementation goes here.
    /* Our Implementation */
-   // syscall_print(f->R.rax);
+   syscall_print(f->R.rax);
    //printf("MUNMAP : %d, syscall %d\n", SYS_MUNMAP, f->R.rax);
    switch (f->R.rax) {
       case SYS_HALT:

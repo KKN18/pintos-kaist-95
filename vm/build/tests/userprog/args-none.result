@@ -1,0 +1,23 @@
+FAIL
+Kernel panic in run: PANIC at ../../userprog/process.c:359 in process_exit(): assertion `0' failed.
+Call stack: 0x8004218869 0x800421c754 0x800420728d 0x800421e144 0x80042243c3 0x800421dc32 0x8004209976 0x8004209d94 0x800421b034 0x8004223d59 0x80042243e6 0x800421dc32 0x8004209976 0x8004209d94 0x8004222399 0x800422137e 0x800421fd16 0x800421f98c 0x8004206151
+Translation of call stack:
+0x0000008004218869: debug_panic (lib/kernel/debug.c:32)
+0x000000800421c754: process_cleanup (userprog/process.c:371)
+0x000000800420728d: thread_exit (threads/thread.c:346)
+0x000000800421e144: wait (userprog/syscall.c:128)
+0x00000080042243c3: vm_try_handle_fault (vm/vm.c:339)
+0x000000800421dc32: page_fault (userprog/exception.c:145)
+0x0000008004209976: intr_handler (threads/interrupt.c:352)
+0x0000008004209d94: intr_entry (threads/intr-stubs.o:?)
+0x000000800421b034: hash_find (lib/kernel/hash.c:124)
+0x0000008004223d59: spt_find_page (vm/vm.c:156)
+0x00000080042243e6: vm_try_handle_fault (vm/vm.c:339)
+0x000000800421dc32: page_fault (userprog/exception.c:145)
+0x0000008004209976: intr_handler (threads/interrupt.c:352)
+0x0000008004209d94: intr_entry (threads/intr-stubs.o:?)
+0x0000008004222399: inode_create (filesys/inode.c:162)
+0x000000800422137e: free_map_create (filesys/free-map.c:68)
+0x000000800421fd16: do_format (filesys/filesys.c:180)
+0x000000800421f98c: filesys_init (filesys/filesys.c:50)
+0x0000008004206151: main (threads/init.c:116)

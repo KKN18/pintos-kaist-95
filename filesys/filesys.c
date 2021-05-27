@@ -11,7 +11,7 @@
 #include "threads/thread.h"
 #include "filesys/fat.h"
 
-#define LOG 1
+#define LOG 0
 
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
@@ -51,6 +51,7 @@ filesys_init (bool format) {
 #endif
 
 	/* RYU */
+	// printf("working dir\n");
 	thread_current()->working_dir = dir_open_root();
 }
 
@@ -97,7 +98,7 @@ filesys_create (const char *path, off_t initial_size) {
 
 	if (!success && inode_sector != 0)
 		free_fat_release (inode_sector, 1);
-	
+	// printf("filesys create dir close\n");
 	dir_close (dir);
 
 	return success;
@@ -121,6 +122,7 @@ struct file * filesys_open (const char *path) {
 		return NULL;
 	struct inode *inode = NULL;
 	dir_lookup (dir, name, &inode);
+	// printf("filesys_open dir close\n");
 	dir_close (dir);
 	return file_open (inode);
 }
@@ -152,12 +154,19 @@ filesys_remove (const char *path) {
 	if (!inode_is_dir (inode) ||
 		((cur_dir = dir_open (inode)) && !dir_readdir (cur_dir, temp)))
 		success = dir != NULL && dir_remove (dir, name);
+	// printf("filesys remove dir close\n");
 	dir_close (dir);
 	
 	if (cur_dir)
+		// printf("filesys remove cur_dir dir close\n");
 		dir_close (cur_dir);
 	return success;
 }
+
+struct dir {
+	struct inode *inode;                /* Backing store. */
+	off_t pos;                          /* Current position. */
+};
 
 /* Formats the file system. */
 static void
@@ -186,8 +195,8 @@ do_format (void) {
 	struct dir *root = dir_open_root ();
 	dir_add (root, ".", ROOT_DIR_SECTOR);
 	dir_add (root, "..", ROOT_DIR_SECTOR);  
+	// printf("do_format dir close\n");
 	dir_close (root);
-
 	printf ("done.\n");
 }
 
@@ -236,14 +245,17 @@ parse_path (const char *path_o, char *file_name)
 		struct inode *inode = NULL;
 		if (!dir_lookup (dir, token, &inode))
 		{
+			PANIC("parse dir_lookup fail\n");
 			dir_close (dir);
 			return NULL;
 		}
 		if (!inode_is_dir (inode))
 		{
+			PANIC("parse dir_lookup fail\n");
 			dir_close (dir);
 			return NULL;
 		}
+		// printf("parse while dir close\n");
 		dir_close (dir);
 		dir = dir_open (inode);
 
@@ -281,9 +293,10 @@ filesys_create_dir (const char *path)
 		struct dir *new_dir = dir_open (inode_open (inode_sector));
 		dir_add (new_dir, ".", inode_sector);
 		dir_add (new_dir, "..", inode_get_inumber (dir_get_inode (dir)));
+		// printf("filesys_create_dir new_dir close\n");
 		dir_close (new_dir);
 	}
-
+	// printf("filesys_create_dir dir close\n");
 	dir_close (dir);
 	return success;
 }

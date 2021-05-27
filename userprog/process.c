@@ -325,7 +325,6 @@ void
 process_exit (void) {
 	if(LOG)
 		printf("process_exit: %s\n", thread_name());
-
 	struct thread *curr = thread_current ();
 	
 	/* TODO: Your code goes here.
@@ -356,12 +355,13 @@ process_exit (void) {
 	}
 
 	/* RYU */
-	ASSERT(0);
-	dir_close(curr->working_dir);
-	ASSERT(0);
-
+	//ASSERT(0);
+	// printf("%%%%%%%%%%%%%%%%\n");
+	// printf("Close working dir\n");
+	//dir_close(curr->working_dir);
 	curr->fd = 2;
 	// ASSERT(file_deny_cnt(curr->prog_file) != 0);
+	// printf("Close prog_file\n");
 	file_close(curr->prog_file);
 	process_cleanup ();
 }

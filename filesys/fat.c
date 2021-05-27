@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define LOG 1
+#define LOG 0
 
 /* Should be less than DISK_SECTOR_SIZE */
 struct fat_boot {
@@ -339,6 +339,6 @@ fat_to_data_cluster (cluster_t clst) {
 		printf("fat_to_data_cluster\n");
 	}
 	
-	disk_sector_t data_start = &fat_fs->data_start;
+	disk_sector_t data_start = fat_fs->data_start;
 	return data_start + clst;
 }
