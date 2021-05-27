@@ -465,7 +465,7 @@ void
 syscall_handler (struct intr_frame *f) {
    // TODO: Your implementation goes here.
    /* Our Implementation */
-   syscall_print(f->R.rax);
+   // syscall_print(f->R.rax);
    //printf("MUNMAP : %d, syscall %d\n", SYS_MUNMAP, f->R.rax);
    switch (f->R.rax) {
       case SYS_HALT:

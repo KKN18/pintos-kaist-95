@@ -12,6 +12,8 @@
 #include "threads/vaddr.h"
 #include "threads/fixed-point.h"
 #include "intrinsic.h"
+#include "filesys/directory.h"
+
 #ifdef USERPROG
 #include "userprog/process.h"
 #include "devices/timer.h"
