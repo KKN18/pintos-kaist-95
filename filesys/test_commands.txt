@@ -1,0 +1,173 @@
+
+dir-* testcases commands
+
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-empty-name:dir-empty-name -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-empty-name < /dev/null 2> tests/filesys/extended/dir-empty-name.errors > tests/filesys/extended/dir-empty-name.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-empty-name.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-empty-name-persistence.errors > tests/filesys/extended/dir-empty-name-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-empty-name.ck tests/filesys/extended/dir-empty-name tests/filesys/extended/dir-empty-name.result
+pass tests/filesys/extended/dir-empty-name
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-mk-tree:dir-mk-tree -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-mk-tree < /dev/null 2> tests/filesys/extended/dir-mk-tree.errors > tests/filesys/extended/dir-mk-tree.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-mk-tree.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-mk-tree-persistence.errors > tests/filesys/extended/dir-mk-tree-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-mk-tree.ck tests/filesys/extended/dir-mk-tree tests/filesys/extended/dir-mk-tree.result
+pass tests/filesys/extended/dir-mk-tree
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-mkdir:dir-mkdir -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-mkdir < /dev/null 2> tests/filesys/extended/dir-mkdir.errors > tests/filesys/extended/dir-mkdir.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-mkdir.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-mkdir-persistence.errors > tests/filesys/extended/dir-mkdir-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-mkdir.ck tests/filesys/extended/dir-mkdir tests/filesys/extended/dir-mkdir.result
+pass tests/filesys/extended/dir-mkdir
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-open:dir-open -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-open < /dev/null 2> tests/filesys/extended/dir-open.errors > tests/filesys/extended/dir-open.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-open.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-open-persistence.errors > tests/filesys/extended/dir-open-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-open.ck tests/filesys/extended/dir-open tests/filesys/extended/dir-open.result
+FAIL tests/filesys/extended/dir-open
+run: write "xyzzy" (must return -1, actually 6): FAILED
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-over-file:dir-over-file -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-over-file < /dev/null 2> tests/filesys/extended/dir-over-file.errors > tests/filesys/extended/dir-over-file.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-over-file.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-over-file-persistence.errors > tests/filesys/extended/dir-over-file-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-over-file.ck tests/filesys/extended/dir-over-file tests/filesys/extended/dir-over-file.result
+pass tests/filesys/extended/dir-over-file
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-rm-cwd:dir-rm-cwd -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-rm-cwd < /dev/null 2> tests/filesys/extended/dir-rm-cwd.errors > tests/filesys/extended/dir-rm-cwd.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-rm-cwd.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-rm-cwd-persistence.errors > tests/filesys/extended/dir-rm-cwd-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-rm-cwd.ck tests/filesys/extended/dir-rm-cwd tests/filesys/extended/dir-rm-cwd.result
+FAIL tests/filesys/extended/dir-rm-cwd
+Test output failed to match any acceptable form.
+
+Acceptable output:
+  (dir-rm-cwd) begin
+  (dir-rm-cwd) open "/"
+  (dir-rm-cwd) mkdir "a"
+  (dir-rm-cwd) open "/a"
+  (dir-rm-cwd) verify "/a" is empty
+  (dir-rm-cwd) "/" and "/a" must have different inumbers
+  (dir-rm-cwd) chdir "a"
+  (dir-rm-cwd) try to remove "/a"
+  (dir-rm-cwd) remove failed
+  (dir-rm-cwd) try to remove "../a" (must fail)
+  (dir-rm-cwd) try to remove ".././a" (must fail)
+  (dir-rm-cwd) try to remove "/./a" (must fail)
+  (dir-rm-cwd) open "/a"
+  (dir-rm-cwd) open "."
+  (dir-rm-cwd) "/a" and "." must have same inumber
+  (dir-rm-cwd) "/" and "/a" must have different inumbers
+  (dir-rm-cwd) chdir "/a"
+  (dir-rm-cwd) open "."
+  (dir-rm-cwd) "." must have same inumber as before
+  (dir-rm-cwd) chdir "/"
+  (dir-rm-cwd) try to remove "a" (must fail: still open)
+  (dir-rm-cwd) verify "/a" is empty
+  (dir-rm-cwd) end
+Differences in `diff -u' format:
+  (dir-rm-cwd) begin
+  (dir-rm-cwd) open "/"
+  (dir-rm-cwd) mkdir "a"
+  (dir-rm-cwd) open "/a"
+  (dir-rm-cwd) verify "/a" is empty
+- (dir-rm-cwd) "/" and "/a" must have different inumbers
+- (dir-rm-cwd) chdir "a"
+- (dir-rm-cwd) try to remove "/a"
+- (dir-rm-cwd) remove failed
+- (dir-rm-cwd) try to remove "../a" (must fail)
+- (dir-rm-cwd) try to remove ".././a" (must fail)
+- (dir-rm-cwd) try to remove "/./a" (must fail)
+- (dir-rm-cwd) open "/a"
+- (dir-rm-cwd) open "."
+- (dir-rm-cwd) "/a" and "." must have same inumber
+- (dir-rm-cwd) "/" and "/a" must have different inumbers
+- (dir-rm-cwd) chdir "/a"
+- (dir-rm-cwd) open "."
+- (dir-rm-cwd) "." must have same inumber as before
+- (dir-rm-cwd) chdir "/"
+- (dir-rm-cwd) try to remove "a" (must fail: still open)
+- (dir-rm-cwd) verify "/a" is empty
+- (dir-rm-cwd) end
+Acceptable output:
+  (dir-rm-cwd) begin
+  (dir-rm-cwd) open "/"
+  (dir-rm-cwd) mkdir "a"
+  (dir-rm-cwd) open "/a"
+  (dir-rm-cwd) verify "/a" is empty
+  (dir-rm-cwd) "/" and "/a" must have different inumbers
+  (dir-rm-cwd) chdir "a"
+  (dir-rm-cwd) try to remove "/a"
+  (dir-rm-cwd) remove successful
+  (dir-rm-cwd) open "/a" (must fail)
+  (dir-rm-cwd) open "." (must fail)
+  (dir-rm-cwd) open ".." (must fail)
+  (dir-rm-cwd) create "x" (must fail)
+  (dir-rm-cwd) verify "/a" is empty
+  (dir-rm-cwd) end
+Differences in `diff -u' format:
+  (dir-rm-cwd) begin
+  (dir-rm-cwd) open "/"
+  (dir-rm-cwd) mkdir "a"
+  (dir-rm-cwd) open "/a"
+  (dir-rm-cwd) verify "/a" is empty
+- (dir-rm-cwd) "/" and "/a" must have different inumbers
+- (dir-rm-cwd) chdir "a"
+- (dir-rm-cwd) try to remove "/a"
+- (dir-rm-cwd) remove successful
+- (dir-rm-cwd) open "/a" (must fail)
+- (dir-rm-cwd) open "." (must fail)
+- (dir-rm-cwd) open ".." (must fail)
+- (dir-rm-cwd) create "x" (must fail)
+- (dir-rm-cwd) verify "/a" is empty
+- (dir-rm-cwd) end
+
+(Process exit codes are excluded for matching purposes.)
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-rm-parent:dir-rm-parent -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-rm-parent < /dev/null 2> tests/filesys/extended/dir-rm-parent.errors > tests/filesys/extended/dir-rm-parent.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-rm-parent.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-rm-parent-persistence.errors > tests/filesys/extended/dir-rm-parent-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-rm-parent.ck tests/filesys/extended/dir-rm-parent tests/filesys/extended/dir-rm-parent.result
+pass tests/filesys/extended/dir-rm-parent
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-rm-root:dir-rm-root -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-rm-root < /dev/null 2> tests/filesys/extended/dir-rm-root.errors > tests/filesys/extended/dir-rm-root.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-rm-root.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-rm-root-persistence.errors > tests/filesys/extended/dir-rm-root-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-rm-root.ck tests/filesys/extended/dir-rm-root tests/filesys/extended/dir-rm-root.result
+pass tests/filesys/extended/dir-rm-root
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-rm-tree:dir-rm-tree -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-rm-tree < /dev/null 2> tests/filesys/extended/dir-rm-tree.errors > tests/filesys/extended/dir-rm-tree.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-rm-tree.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-rm-tree-persistence.errors > tests/filesys/extended/dir-rm-tree-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-rm-tree.ck tests/filesys/extended/dir-rm-tree tests/filesys/extended/dir-rm-tree.result
+FAIL tests/filesys/extended/dir-rm-tree
+run: remove "/0/0/0": FAILED
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-rmdir:dir-rmdir -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-rmdir < /dev/null 2> tests/filesys/extended/dir-rmdir.errors > tests/filesys/extended/dir-rmdir.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-rmdir.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-rmdir-persistence.errors > tests/filesys/extended/dir-rmdir-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-rmdir.ck tests/filesys/extended/dir-rmdir tests/filesys/extended/dir-rmdir.result
+FAIL tests/filesys/extended/dir-rmdir
+run: rmdir "a": FAILED
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-under-file:dir-under-file -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-under-file < /dev/null 2> tests/filesys/extended/dir-under-file.errors > tests/filesys/extended/dir-under-file.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-under-file.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-under-file-persistence.errors > tests/filesys/extended/dir-under-file-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-under-file.ck tests/filesys/extended/dir-under-file tests/filesys/extended/dir-under-file.result
+pass tests/filesys/extended/dir-under-file
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 150 -m 20   --fs-disk=tmp.dsk -p tests/filesys/extended/dir-vine:dir-vine -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run dir-vine < /dev/null 2> tests/filesys/extended/dir-vine.errors > tests/filesys/extended/dir-vine.output
+pintos -v -k -T 60   --fs-disk=tmp.dsk -g fs.tar:tests/filesys/extended/dir-vine.tar --swap-disk=4 -- -q  run 'tar fs.tar /' < /dev/null 2> tests/filesys/extended/dir-vine-persistence.errors > tests/filesys/extended/dir-vine-persistence.output
+rm -f tmp.dsk
+perl -I../.. ../../tests/filesys/extended/dir-vine.ck tests/filesys/extended/dir-vine tests/filesys/extended/dir-vine.result
+FAIL tests/filesys/extended/dir-vine
+run: created files and directories only to level 0: FAILED
