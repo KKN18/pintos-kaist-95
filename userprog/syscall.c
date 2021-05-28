@@ -166,7 +166,10 @@ bool create(const char *file, unsigned initial_size) {
 
 bool remove(const char *file) {
    if (file == NULL) return false;
-   return filesys_remove(file);
+   lock_acquire(&file_access);
+   bool ret = filesys_remove(file);
+   lock_release(&file_access);
+   return ret;
 }
 
 int open(const char *file) {

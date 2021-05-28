@@ -90,7 +90,6 @@ filesys_create (const char *path, off_t initial_size) {
 	char name[PATH_MAX_LEN + 1];
 	struct dir *dir = parse_path(path, name);
 
-
 	bool success = (dir != NULL
 			&& free_fat_allocate (1, &inode_sector)
 			&& inode_create (inode_sector, initial_size, 0)
@@ -115,13 +114,13 @@ struct file * filesys_open (const char *path) {
 	{
 		printf("filesys_open\n");	
 	}
-		
 	char name[PATH_MAX_LEN + 1];
 	struct dir *dir = parse_path (path, name);
 	if (dir == NULL)
 		return NULL;
 	struct inode *inode = NULL;
-	dir_lookup (dir, name, &inode);
+	if (!dir_lookup (dir, name, &inode))
+		return NULL;
 	// printf("filesys_open dir close\n");
 	dir_close (dir);
 	return file_open (inode);
@@ -135,12 +134,11 @@ struct file * filesys_open (const char *path) {
 // RYU
 bool
 filesys_remove (const char *path) {
-	
 	if(LOG)
 	{
 		printf("filesys_remove: %s\n", path);	
 	}
-		
+	
 	char name[PATH_MAX_LEN + 1];
 	struct dir *dir = parse_path (path, name);
 
@@ -218,8 +216,8 @@ parse_path (const char *path_o, char *file_name)
 	if (strlen (path_o) == 0)
 		return NULL;
 
-	char path[PATH_MAX_LEN + 1];
-	strlcpy (path, path_o, PATH_MAX_LEN);
+	char path[PATH_MAX_LEN + 3];
+	strlcpy (path, path_o, PATH_MAX_LEN + 2);
 
 	if (path[0] == '/')
 		dir = dir_open_root ();
@@ -262,7 +260,8 @@ parse_path (const char *path_o, char *file_name)
 		token = next_token;
 		next_token = strtok_r (NULL, "/", &save_ptr);
 	}
-
+	if (strlen(token) == PATH_MAX_LEN + 1)
+		return NULL;
 	strlcpy (file_name, token, PATH_MAX_LEN);
 	return dir;
 }

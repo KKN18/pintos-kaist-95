@@ -180,8 +180,8 @@ fat_fs_init (void) {
 	}
 	/* TODO: Your code goes here. */
 	struct fat_boot *bs = &fat_fs->bs;
-	fat_fs->fat_length = bs->fat_sectors / bs->sectors_per_cluster;
-	fat_fs->data_start = bs->fat_start + fat_fs->fat_length;
+	fat_fs->fat_length = (bs->fat_sectors / bs->sectors_per_cluster) * DISK_SECTOR_SIZE / sizeof(cluster_t *);
+   	fat_fs->data_start = bs->fat_start + (fat_fs->fat_length * sizeof(cluster_t *) / DISK_SECTOR_SIZE);
 }
 
 /*----------------------------------------------------------------------------*/

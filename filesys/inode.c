@@ -268,8 +268,11 @@ inode_close (struct inode *inode) {
 		if (inode->removed) {
 			// printf("inode removed\n");
 			free_fat_release (inode->sector, 1);
-			free_fat_release (inode->data.start,
-					bytes_to_sectors (inode->data.length)); 
+			int sectors = bytes_to_sectors(inode->data.length);
+			for(int i = 0; i < sectors; i++)
+			{
+				free_fat_release(inode->data.start + i, 1);
+			}
 		}
 		free (inode); 
 		// printf("free inode\n");
