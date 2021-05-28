@@ -191,6 +191,16 @@ dir_remove (struct dir *dir, const char *name) {
 	if (inode == NULL)
 		goto done;
 
+	// WOOKAYIN
+	// Don't erase non-empty directory
+	if (inode_is_dir (inode)) {
+		// target : the directory to be removed. (dir : the base directory)
+		struct dir *target = dir_open (inode);
+		bool is_empty = dir_is_empty (target);
+		dir_close (target);
+		if (!is_empty) goto done; // can't delete
+  	}
+
 	/* Erase directory entry. */
 	e.in_use = false;
 	if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e)
@@ -221,4 +231,22 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1]) {
 		}
 	}
 	return false;
+}
+
+// WOOKAYIN
+/* Returns whether the DIR is empty. */
+bool
+dir_is_empty (const struct dir *dir)
+{
+	struct dir_entry e;
+	off_t ofs;
+
+	for (ofs = sizeof 0; /* 0-pos is for parent directory */
+		inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
+		ofs += sizeof e)
+	{
+		if (e.in_use)
+			return false;
+	}
+	return true;
 }

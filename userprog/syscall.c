@@ -236,6 +236,12 @@ read (int fd, void *buffer, unsigned size)
          lock_release(&file_access);
          return -1;
       }
+      // If this is directory, read not allowed.
+      if (inode_is_dir(file->inode))
+      {
+         lock_release(&file_access);
+         return -1;
+      }
       int iRead = file_read(file, buffer, size); // from file.h
       lock_release (&file_access);
       return iRead;
@@ -290,7 +296,7 @@ unsigned tell (int fd)
 void close (int fd)
 { 
    lock_acquire(&file_access);
-     delete_file (fd);
+   delete_file (fd);
    lock_release(&file_access);
 }
 
@@ -334,21 +340,27 @@ bool chdir (const char *dirname)
    strlcat (path, "/0", PATH_MAX_LEN);
 
    char name[PATH_MAX_LEN + 1];
+   lock_acquire(&file_access);
    struct dir *dir = parse_path (path, name);
    if (!dir)
       return false;
    dir_close (thread_current ()->working_dir);
    thread_current ()->working_dir = dir;
+   lock_release(&file_access);
    return true;
 }
 
 bool mkdir (const char *dir) 
 {
-   return filesys_create_dir (dir);
+   lock_acquire(&file_access);
+   int ret = filesys_create_dir(dir);
+   lock_release(&file_access);
+   return ret;
 }
 
 bool readdir (int fd, char *name) 
 {
+   lock_acquire(&file_access);
    struct file *f = search_file (fd);
    if (f == NULL)
       exit (-1);
@@ -366,27 +378,35 @@ bool readdir (int fd, char *name)
       result = dir_readdir (dir, name);
    if (i <= *pos == false)
       (*pos)++;
+   lock_release(&file_access);
    return result;
 }
 
 
 bool isdir (int fd) 
 {
+   lock_acquire(&file_access);
    /* RYU */
    struct file *f = search_file(fd);
 
    if(f == NULL)
       exit(-1);
 
-   return inode_is_dir(file_get_inode(f));
+   bool ret = inode_is_dir(file_get_inode(f));
+   lock_release(&file_access);
+   return ret;
 }
 
 int inumber (int fd)
 {
+   lock_acquire(&file_access);
    struct file *f = search_file (fd);
    if (f == NULL)
       exit (-1);
-   return inode_get_inumber (file_get_inode (f));
+   
+   disk_sector_t ret = inode_get_inumber(file_get_inode(f));
+   lock_release(&file_access);
+   return ret;
 }
 int symlink (const char* target, const char* linkpath)
 {
