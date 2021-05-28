@@ -258,6 +258,11 @@ int write (int fd, const void *buffer, unsigned size)
       lock_release(&file_access);
       return -1;
     }
+    if (inode_is_dir(file->inode))
+    {
+       lock_release(&file_access);
+       return -1;
+    }
     int iWrite = file_write(file, buffer, size); // file.h
     lock_release (&file_access);
     return iWrite;

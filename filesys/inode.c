@@ -24,7 +24,7 @@ struct inode_disk {
 	
 	uint32_t unused[124];               /* Not used. */
 
-	uint32_t is_dir						/* This is directory or not */
+	bool is_dir;						/* This is directory or not */
 };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -118,7 +118,7 @@ inode_init (void) {
 /* Our Implementation */
 // Also get is_dir in inode_create()
 bool
-inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {
+inode_create (disk_sector_t sector, off_t length, bool is_dir) {
 	if(LOG)
 	{
 		printf("inode_create\n");	
@@ -500,5 +500,5 @@ inode_is_dir (const struct inode *inode)
 	struct inode_disk inode_disk;
 	if (inode->removed)
 		return false;
-	return inode_disk.is_dir;
+	return inode->data.is_dir;
 }

@@ -92,7 +92,7 @@ filesys_create (const char *path, off_t initial_size) {
 
 	bool success = (dir != NULL
 			&& free_fat_allocate (1, &inode_sector)
-			&& inode_create (inode_sector, initial_size, 0)
+			&& inode_create (inode_sector, initial_size, false)
 			&& dir_add (dir, name, inode_sector));
 
 	if (!success && inode_sector != 0)
