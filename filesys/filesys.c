@@ -93,7 +93,7 @@ filesys_create (const char *path, off_t initial_size) {
 	bool success = (dir != NULL
 			&& free_fat_allocate (1, &inode_sector)
 			&& inode_create (inode_sector, initial_size, false)
-			&& dir_add (dir, name, inode_sector));
+			&& dir_add (dir, name, inode_sector, false));
 
 	if (!success && inode_sector != 0)
 		free_fat_release (inode_sector, 1);
@@ -193,8 +193,8 @@ do_format (void) {
 	
 	// RYU
 	struct dir *root = dir_open_root ();
-	dir_add (root, ".", ROOT_DIR_SECTOR);
-	dir_add (root, "..", ROOT_DIR_SECTOR);  
+	dir_add (root, ".", ROOT_DIR_SECTOR, true);
+	dir_add (root, "..", ROOT_DIR_SECTOR, true);  
 	// printf("do_format dir close\n");
 	dir_close (root);
 	printf ("done.\n");
@@ -284,7 +284,7 @@ filesys_create_dir (const char *path)
 	bool success = (dir != NULL
 					&& free_fat_allocate (1, &inode_sector)
 					&& dir_create (inode_sector, 16)
-					&& dir_add (dir, name, inode_sector));
+					&& dir_add (dir, name, inode_sector, true));
 	if (!success && inode_sector != 0)
 		free_fat_release (inode_sector, 1);
 
@@ -292,8 +292,8 @@ filesys_create_dir (const char *path)
 	if (success)
 	{
 		struct dir *new_dir = dir_open (inode_open (inode_sector));
-		dir_add (new_dir, ".", inode_sector);
-		dir_add (new_dir, "..", inode_get_inumber (dir_get_inode (dir)));
+		dir_add (new_dir, ".", inode_sector, true);
+		dir_add (new_dir, "..", inode_get_inumber (dir_get_inode (dir)), true);
 		// printf("filesys_create_dir new_dir close\n");
 		dir_close (new_dir);
 	}
