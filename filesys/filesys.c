@@ -11,7 +11,7 @@
 #include "threads/thread.h"
 #include "filesys/fat.h"
 
-#define LOG 1
+#define LOG 0
 
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
