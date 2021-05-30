@@ -36,7 +36,7 @@ dir_open (struct inode *inode) {
 		dir->pos = 0;
 		return dir;
 	} else {
-		PANIC("dir open fail\n");
+		// PANIC("dir open fail\n");
 		inode_close (inode);
 		free (dir);
 		return NULL;

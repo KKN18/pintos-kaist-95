@@ -11,7 +11,7 @@
 #include "threads/thread.h"
 #include "filesys/fat.h"
 
-#define LOG 0
+#define LOG 1
 
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
@@ -114,8 +114,10 @@ struct file * filesys_open (const char *path) {
 	{
 		printf("filesys_open\n");	
 	}
+	// printf("original path: %s\n", path);
 	char name[PATH_MAX_LEN + 1];
 	struct dir *dir = parse_path (path, name);
+	// printf("after parse: %s\n", name);
 	if (dir == NULL)
 		return NULL;
 	struct inode *inode = NULL;

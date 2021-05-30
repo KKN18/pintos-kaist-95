@@ -18,7 +18,7 @@ typedef uint32_t cluster_t;  /* Index of a cluster within FAT. */
 #define FAT_BOOT_SECTOR 0     /* FAT boot sector. */
 
 // We modified it to 0
-#define ROOT_DIR_CLUSTER 0    /* Cluster for the root directory */
+#define ROOT_DIR_CLUSTER 1    /* Cluster for the root directory */
 
 void fat_init (void);
 void fat_open (void);

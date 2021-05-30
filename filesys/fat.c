@@ -143,7 +143,7 @@ fat_create (void) {
 		PANIC ("FAT creation failed");
 
 	// Set up ROOT_DIR_CLST
-	fat_put (ROOT_DIR_CLUSTER, EOChain);
+	// fat_put (ROOT_DIR_CLUSTER, EOChain);
 
 	// Fill up ROOT_DIR_CLUSTER region with 0
 	uint8_t *buf = calloc (1, DISK_SECTOR_SIZE);
@@ -157,7 +157,7 @@ void
 fat_boot_create (void) {
 	if(LOG)
 	{
-		printf("fat_boot_create\n");	
+		printf("fat_boot_create\n");
 	}
 	unsigned int fat_sectors =
 	    (disk_size (filesys_disk) - 1)
@@ -180,8 +180,12 @@ fat_fs_init (void) {
 	}
 	/* TODO: Your code goes here. */
 	struct fat_boot *bs = &fat_fs->bs;
-	fat_fs->fat_length = (bs->fat_sectors / bs->sectors_per_cluster) * DISK_SECTOR_SIZE / sizeof(cluster_t *);
-   	fat_fs->data_start = bs->fat_start + (fat_fs->fat_length * sizeof(cluster_t *) / DISK_SECTOR_SIZE);
+	bs->fat_sectors -= 1;
+	fat_fs->fat_length = (bs->fat_sectors / bs->sectors_per_cluster) / sizeof(cluster_t) * DISK_SECTOR_SIZE;
+   	// printf("fat_start: %d, fat_sectors: %d, fat_length: %d\n", bs->fat_start, bs->fat_sectors, fat_fs->fat_length);
+	fat_fs->data_start = bs->fat_start + (bs->fat_sectors / bs->sectors_per_cluster);
+	// printf("data_start: %d\n", fat_fs->data_start);
+	// printf("capacity: %d\n", disk_size(filesys_disk));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -340,5 +344,6 @@ fat_to_data_cluster (cluster_t clst) {
 	}
 	
 	disk_sector_t data_start = fat_fs->data_start;
-	return data_start + clst;
+	// printf("cluster: %d, fat_to_data_cluster result: %d\n", clst, data_start + clst - 1);
+	return data_start + clst - 1;
 }

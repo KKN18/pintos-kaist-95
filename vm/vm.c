@@ -326,6 +326,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* Page fault is TRUE page fault */
   	if (addr == NULL || !not_present || !is_user_vaddr(addr))
 	{
+		ASSERT(0);
 		exit(-1);
 	}
 
@@ -348,6 +349,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 				return true;
 			}
 		}
+		ASSERT(0);
 		exit(-1);
 	}
 	

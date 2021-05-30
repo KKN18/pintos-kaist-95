@@ -368,14 +368,20 @@ bool readdir (int fd, char *name)
    struct inode *inode = file_get_inode (f);
    if (!inode || !inode_is_dir (inode))
       return false;
+
    struct dir *dir = dir_open (inode);
    if (!dir)
       return false;
    int i;
    bool result = true;
    off_t *pos = (off_t *)f + 1;
+   
+   // ASSERT(0);
+   
    for (i = 0; i <= *pos && result; i++)
       result = dir_readdir (dir, name);
+   
+   ASSERT(0);
    if (i <= *pos == false)
       (*pos)++;
    lock_release(&file_access);
