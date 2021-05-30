@@ -374,16 +374,9 @@ bool readdir (int fd, char *name)
       return false;
    int i;
    bool result = true;
-   off_t *pos = (off_t *)f + 1;
    
-   // ASSERT(0);
+   result = dir_readdir (dir, name);
    
-   for (i = 0; i <= *pos && result; i++)
-      result = dir_readdir (dir, name);
-   
-   ASSERT(0);
-   if (i <= *pos == false)
-      (*pos)++;
    lock_release(&file_access);
    return result;
 }
