@@ -30,4 +30,5 @@ bool dir_readdir (struct dir *, char name[NAME_MAX + 1]);
 /* WOOKAYIN */
 bool
 dir_is_empty (const struct dir *dir);
+struct dir *dir_open_path (const char *path);
 #endif /* filesys/directory.h */

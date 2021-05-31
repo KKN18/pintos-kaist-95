@@ -14,6 +14,7 @@ void syscall_handler (struct intr_frame *);
 
 /* Our Implementation */
 #include "filesys/inode.h"
+#include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/synch.h"
@@ -38,6 +39,27 @@ struct file {
    struct inode *inode;        /* File's inode. */
    off_t pos;                  /* Current position. */
    bool deny_write;            /* Has file_deny_write() been called? */
+};
+
+struct inode_disk {
+	disk_sector_t start;                /* First data sector. */
+	off_t length;                       /* File size in bytes. */
+	unsigned magic;                     /* Magic number. */
+
+	uint32_t unused[124];               /* Not used. */
+
+	bool is_dir;						/* This is directory or not */
+};
+
+struct inode {
+	struct list_elem elem;              /* Element in inode list. */
+	disk_sector_t sector;               /* Sector number of disk location. */
+	int open_cnt;                       /* Number of openers. */
+	bool removed;                       /* True if deleted, false otherwise. */
+	int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
+	struct inode_disk data;             /* Inode content. */
+	/* Our Implementation */
+	struct lock *fat_lock;				/* Lock when accessing FAT */
 };
 
 syscall_init (void) {
@@ -181,6 +203,14 @@ int open(const char *file) {
       lock_release(&file_access);
       return -1;
    }
+
+   // Wookayin
+   // directory handling
+   struct inode *inode = file_get_inode(f);
+   if(inode != NULL && inode_is_dir(inode)) {
+      dir_open( inode_reopen(inode) );
+   }
+
    int fd = allocate_fd(f);
    if (fd == -1)
    {
@@ -335,17 +365,15 @@ void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset)
 // RYU
 bool chdir (const char *dirname) 
 {
-   char path[PATH_MAX_LEN + 1];
-   strlcpy (path, dirname, PATH_MAX_LEN);
-   strlcat (path, "/0", PATH_MAX_LEN);
+   struct dir *dir = dir_open_path (dirname);
 
-   char name[PATH_MAX_LEN + 1];
-   lock_acquire(&file_access);
-   struct dir *dir = parse_path (path, name);
-   if (!dir)
+   if(dir == NULL) {
       return false;
-   dir_close (thread_current ()->working_dir);
-   thread_current ()->working_dir = dir;
+   }
+   lock_acquire(&file_access);
+   // switch CWD
+   dir_close (thread_current()->working_dir);
+   thread_current()->working_dir = dir;
    lock_release(&file_access);
    return true;
 }
@@ -367,16 +395,21 @@ bool readdir (int fd, char *name)
    // 내부 아이노드 가져오기 및 디렉터리 열기
    struct inode *inode = file_get_inode (f);
    if (!inode || !inode_is_dir (inode))
+   {
+      lock_release(&file_access);
       return false;
+   }
 
    struct dir *dir = dir_open (inode);
    if (!dir)
+   {
+      lock_release(&file_access);
       return false;
+   }
+      
    int i;
    bool result = true;
-   
    result = dir_readdir (dir, name);
-   
    lock_release(&file_access);
    return result;
 }

@@ -23,6 +23,9 @@ off_t inode_length (const struct inode *);
 // RYU
 bool inode_is_dir (const struct inode *inode);
 
+// WOOKAYIN
+bool inode_is_removed (const struct inode *inode);
+
 int deny_cnt (struct inode *inode); /* For Debug */
 
 #endif /* filesys/inode.h */

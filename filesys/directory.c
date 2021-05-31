@@ -5,6 +5,7 @@
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
 
 /* A directory. */
 struct dir {
@@ -238,14 +239,19 @@ done:
 bool
 dir_readdir (struct dir *dir, char name[NAME_MAX + 1]) {
 	struct dir_entry e;
-
+	//printf("Length %d\n", inode_length(dir->inode));
+	dir->pos += 2 * sizeof e;
 	while (inode_read_at (dir->inode, &e, sizeof e, dir->pos) == sizeof e) {
+		//printf("pos %d\n", dir->pos);
 		dir->pos += sizeof e;
 		if (e.in_use) {
+			//printf("name %s\n", e.name);
 			strlcpy (name, e.name, NAME_MAX + 1);
 			return true;
 		}
+		//printf("here\n");
 	}
+	//printf("READDIR END\n");
 	return false;
 }
 
@@ -257,7 +263,7 @@ dir_is_empty (const struct dir *dir)
 	struct dir_entry e;
 	off_t ofs;
 
-	for (ofs = sizeof 0; /* 0-pos is for parent directory */
+	for (ofs = 2 * sizeof e; /* 0-pos is for parent directory */
 		inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 		ofs += sizeof e)
 	{
@@ -265,4 +271,57 @@ dir_is_empty (const struct dir *dir)
 			return false;
 	}
 	return true;
+}
+
+//WOOKAYIN
+/* Opens the directory for given path. */
+struct dir *
+dir_open_path (const char *path)
+{
+   // copy of path, to tokenize
+   int l = strlen(path);
+   char s[l + 1];
+   strlcpy(s, path, l + 1);
+
+   // relative path handling
+   struct dir *curr;
+   if(path[0] == '/') { // absolute path
+      curr = dir_open_root();
+   }
+   else { // relative path
+      struct thread *t = thread_current();
+      if (t->working_dir == NULL) // may happen for non-process threads (e.g. main)
+         curr = dir_open_root();
+      else {
+         curr = dir_reopen( t->working_dir );
+      }
+   }
+
+   // tokenize, and traverse the tree
+   char *token, *p;
+   for (token = strtok_r(s, "/", &p); token != NULL;
+      token = strtok_r(NULL, "/", &p))
+   {
+      struct inode *inode = NULL;
+      if(! dir_lookup(curr, token, &inode)) {
+         dir_close(curr);
+         return NULL; // such directory not exist
+      }
+
+      struct dir *next = dir_open(inode);
+      if(next == NULL) {
+         dir_close(curr);
+         return NULL;
+      }
+      dir_close(curr);
+      curr = next;
+   }
+
+   // prevent from opening removed directories
+   if (inode_is_removed (dir_get_inode(curr))) {
+      dir_close(curr);
+      return NULL;
+   }
+
+   return curr;
 }

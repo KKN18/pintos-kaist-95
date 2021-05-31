@@ -308,7 +308,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 	uint8_t *buffer = buffer_;
 	off_t bytes_read = 0;
 	uint8_t *bounce = NULL;
-	// printf("	length %d offset %d\n", inode_length(inode), offset);
+	//printf("	length %d offset %d\n", inode_length(inode), offset);
 	while (size > 0) {
 		/* Disk sector to read, starting byte offset within sector. */
 		disk_sector_t sector_idx = byte_to_sector (inode, offset);
@@ -386,7 +386,6 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		{
 			// ASSERT(0);
 			lock_acquire(&inode->fat_lock);
-
 			disk_sector_t start = inode->data.start;
 			cluster_t temp = (cluster_t) start;
 			cluster_t prev = temp;
@@ -523,4 +522,11 @@ inode_is_dir (const struct inode *inode)
 	if (inode->removed)
 		return false;
 	return inode->data.is_dir;
+}
+// WOOKAYIN
+/* Returns whether the file is removed or not. */
+bool
+inode_is_removed (const struct inode *inode)
+{
+   return inode->removed;
 }
