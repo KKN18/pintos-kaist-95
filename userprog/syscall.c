@@ -19,6 +19,7 @@ void syscall_handler (struct intr_frame *);
 #include "filesys/filesys.h"
 #include "threads/synch.h"
 #include "vm/file.h"
+#include "filesys/inode.h"
 /* END */
 
 /* System call.
@@ -33,34 +34,6 @@ void syscall_handler (struct intr_frame *);
 #define MSR_STAR 0xc0000081         /* Segment selector msr */
 #define MSR_LSTAR 0xc0000082        /* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
-
-/* Copy file structure */
-struct file {
-   struct inode *inode;        /* File's inode. */
-   off_t pos;                  /* Current position. */
-   bool deny_write;            /* Has file_deny_write() been called? */
-};
-
-struct inode_disk {
-	disk_sector_t start;                /* First data sector. */
-	off_t length;                       /* File size in bytes. */
-	unsigned magic;                     /* Magic number. */
-
-	uint32_t unused[124];               /* Not used. */
-
-	bool is_dir;						/* This is directory or not */
-};
-
-struct inode {
-	struct list_elem elem;              /* Element in inode list. */
-	disk_sector_t sector;               /* Sector number of disk location. */
-	int open_cnt;                       /* Number of openers. */
-	bool removed;                       /* True if deleted, false otherwise. */
-	int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
-	struct inode_disk data;             /* Inode content. */
-	/* Our Implementation */
-	struct lock *fat_lock;				/* Lock when accessing FAT */
-};
 
 syscall_init (void) {
    write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
@@ -181,7 +154,7 @@ bool create(const char *file, unsigned initial_size) {
    if (file == NULL) exit(-1);
    if (strlen(file) == 0) return false;
    lock_acquire(&file_access);
-   bool ret = filesys_create(file, initial_size);
+   bool ret = filesys_create(file, initial_size, false);
    lock_release(&file_access);
    return ret;
 }
@@ -208,7 +181,7 @@ int open(const char *file) {
    // directory handling
    struct inode *inode = file_get_inode(f);
    if(inode != NULL && inode_is_dir(inode)) {
-      dir_open( inode_reopen(inode) );
+      f->dir = dir_open( inode_reopen(inode) );
    }
 
    int fd = allocate_fd(f);
@@ -330,22 +303,6 @@ void close (int fd)
    lock_release(&file_access);
 }
 
-/*
-int dup2 (int oldfd, int newfd)
-{
-   struct file *oldfile = search_file(oldfd);
-   struct file *newfile = search_file(newfd);
-   if (oldfd < 0 || oldfd >= thread_current()->next_fd)
-      return -1;
-   if (newfile != NULL)
-   {
-      close(newfile);
-   }
-   newfile = oldfile;
-   return newfd;
-}
-*/
-
 void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset) 
 {
    if (!is_user_vaddr(addr) || !is_user_vaddr(length) || !is_user_vaddr(writable) || !is_user_vaddr(fd) || !is_user_vaddr(offset))
@@ -370,7 +327,6 @@ bool chdir (const char *dirname)
       return false;
    }
    lock_acquire(&file_access);
-   // switch CWD
    dir_close (thread_current()->working_dir);
    thread_current()->working_dir = dir;
    lock_release(&file_access);
@@ -380,7 +336,7 @@ bool chdir (const char *dirname)
 bool mkdir (const char *dir) 
 {
    lock_acquire(&file_access);
-   int ret = filesys_create_dir(dir);
+   int ret = filesys_create(dir, 0, true);
    lock_release(&file_access);
    return ret;
 }
@@ -396,25 +352,14 @@ bool readdir (int fd, char *name)
       lock_release(&file_access);
       exit (-1);
    }
-   
-   /*
-   // 내부 아이노드 가져오기 및 디렉터리 열기
-   struct inode *inode = file_get_inode (f);
-   if (!inode || !inode_is_dir (inode))
-   {
-      lock_release(&file_access);
-      return false;
-   }
-   */
 
-   struct dir *dir = dir_open (file_get_inode (f));
-   if (dir == NULL)
+   if (f->dir == NULL)
    {
       lock_release(&file_access);
       return false;
    }
 
-   bool result = dir_readdir (dir, name);
+   bool result = dir_readdir (f->dir, name);
    
    lock_release(&file_access);
    
