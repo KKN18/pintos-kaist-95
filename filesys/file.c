@@ -20,6 +20,7 @@ file_open (struct inode *inode) {
 		file->inode = inode;
 		file->pos = 0;
 		file->deny_write = false;
+		file->dir = NULL;
 		return file;
 	} else {
 		PANIC("file_open fail\n");

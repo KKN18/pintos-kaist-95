@@ -347,7 +347,7 @@ parse_path (const char *path_o, char *file_name)
 			dir_close (dir);
 			return NULL;
 		}
-		
+
 		dir_close (dir);
 		dir = dir_open (inode);
 
@@ -358,38 +358,4 @@ parse_path (const char *path_o, char *file_name)
 		return NULL;
 	strlcpy (file_name, token, PATH_MAX_LEN);
 	return dir;
-}
-
-// RYU
-bool
-filesys_create_dir (const char *path)
-{
-	if(LOG)
-	{
-		printf("filesys_create_dir: %s\n", path);	
-	}
-		
-	disk_sector_t inode_sector = 0;
-	char name[PATH_MAX_LEN + 1];
-	struct dir *dir = parse_path (path, name);
-	// printf("Dir Create %s\n", name);
-	bool success = (dir != NULL
-					&& free_fat_allocate (1, &inode_sector)
-					&& dir_create (inode_sector, 16)
-					&& dir_add (dir, name, inode_sector, true));
-	if (!success && inode_sector != 0)
-		free_fat_release (inode_sector, 1);
-
-	
-	if (success)
-	{
-		struct dir *new_dir = dir_open (inode_open (inode_sector));
-		dir_add (new_dir, ".", inode_sector, true);
-		dir_add (new_dir, "..", inode_get_inumber (dir_get_inode (dir)), true);
-		// printf("filesys_create_dir new_dir close\n");
-		dir_close (new_dir);
-	}
-	// printf("filesys_create_dir dir close\n");
-	dir_close (dir);
-	return success;
 }
