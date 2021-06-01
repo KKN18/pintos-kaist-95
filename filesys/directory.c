@@ -239,8 +239,13 @@ done:
 bool
 dir_readdir (struct dir *dir, char name[NAME_MAX + 1]) {
 	struct dir_entry e;
-	//printf("Length %d\n", inode_length(dir->inode));
-	dir->pos += 2 * sizeof e;
+
+	if(dir_is_empty(dir))
+		return false;
+
+	if(dir->pos == 0)
+		dir->pos += 2 * sizeof e;
+	
 	while (inode_read_at (dir->inode, &e, sizeof e, dir->pos) == sizeof e) {
 		//printf("pos %d\n", dir->pos);
 		dir->pos += sizeof e;

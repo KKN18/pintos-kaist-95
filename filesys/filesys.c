@@ -78,7 +78,7 @@ filesys_done (void) {
  * Fails if a file named NAME already exists,
  * or if internal memory allocation fails. */
 bool
-filesys_create (const char *path, off_t initial_size) {
+filesys_create (const char *path, off_t initial_size, bool is_dir) {
 	
 	if(LOG)
 	{
@@ -88,19 +88,39 @@ filesys_create (const char *path, off_t initial_size) {
 	disk_sector_t inode_sector = 0;
 	
 	// RYU
+	bool success;
 	char name[PATH_MAX_LEN + 1];
 	struct dir *dir = parse_path(path, name);
-	// printf("File Create %s\n", name);
 
-	bool success = (dir != NULL
+	if(is_dir) 
+	{
+		success = (dir != NULL
+					&& free_fat_allocate (1, &inode_sector)
+					&& dir_create (inode_sector, 16)
+					&& dir_add (dir, name, inode_sector, is_dir));
+	}
+	else 
+	{
+		success = (dir != NULL
 			&& free_fat_allocate (1, &inode_sector)
-			&& inode_create (inode_sector, initial_size, false)
-			&& dir_add (dir, name, inode_sector, false));
+			&& inode_create (inode_sector, initial_size, is_dir)
+			&& dir_add (dir, name, inode_sector, is_dir));
+	}
+	
 
 	if (!success && inode_sector != 0)
 		free_fat_release (inode_sector, 1);
-	// printf("filesys create dir close\n");
+
+	if (success && is_dir)
+	{
+		struct dir *new_dir = dir_open (inode_open (inode_sector));
+		dir_add (new_dir, ".", inode_sector, true);
+		dir_add (new_dir, "..", inode_get_inumber (dir_get_inode (dir)), true);
+		dir_close (new_dir);
+	}
+
 	dir_close (dir);
+
 	return success;
 }
 /* Opens the file with the given NAME.
@@ -319,17 +339,15 @@ parse_path (const char *path_o, char *file_name)
 		struct inode *inode = NULL;
 		if (!dir_lookup (dir, token, &inode))
 		{
-			PANIC("parse dir_lookup fail\n");
 			dir_close (dir);
 			return NULL;
 		}
 		if (!inode_is_dir (inode))
 		{
-			PANIC("parse dir_lookup fail\n");
 			dir_close (dir);
 			return NULL;
 		}
-		// printf("parse while dir close\n");
+		
 		dir_close (dir);
 		dir = dir_open (inode);
 
