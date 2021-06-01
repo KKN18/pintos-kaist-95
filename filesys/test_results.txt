@@ -97,11 +97,11 @@ pass tests/filesys/extended/dir-mk-tree
 pass tests/filesys/extended/dir-mkdir
 pass tests/filesys/extended/dir-open
 pass tests/filesys/extended/dir-over-file
-FAIL tests/filesys/extended/dir-rm-cwd
+pass tests/filesys/extended/dir-rm-cwd
 pass tests/filesys/extended/dir-rm-parent
 pass tests/filesys/extended/dir-rm-root
 FAIL tests/filesys/extended/dir-rm-tree
-FAIL tests/filesys/extended/dir-rmdir
+pass tests/filesys/extended/dir-rmdir
 pass tests/filesys/extended/dir-under-file
 FAIL tests/filesys/extended/dir-vine
 pass tests/filesys/extended/grow-create
@@ -115,9 +115,9 @@ pass tests/filesys/extended/grow-sparse
 pass tests/filesys/extended/grow-tell
 pass tests/filesys/extended/grow-two-files
 pass tests/filesys/extended/syn-rw
-FAIL tests/filesys/extended/symlink-file
-FAIL tests/filesys/extended/symlink-dir
-FAIL tests/filesys/extended/symlink-link
+pass tests/filesys/extended/symlink-file
+pass tests/filesys/extended/symlink-dir
+pass tests/filesys/extended/symlink-link
 pass tests/vm/pt-grow-stack
 pass tests/vm/pt-grow-bad
 pass tests/vm/pt-big-stk-obj
@@ -190,4 +190,4 @@ FAIL tests/filesys/extended/syn-rw-persistence
 FAIL tests/filesys/extended/symlink-file-persistence
 FAIL tests/filesys/extended/symlink-dir-persistence
 FAIL tests/filesys/extended/symlink-link-persistence
-33 of 192 tests failed.
+28 of 192 tests failed.

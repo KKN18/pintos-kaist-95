@@ -366,7 +366,6 @@ void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset)
 bool chdir (const char *dirname) 
 {
    struct dir *dir = dir_open_path (dirname);
-
    if(dir == NULL) {
       return false;
    }
@@ -389,9 +388,16 @@ bool mkdir (const char *dir)
 bool readdir (int fd, char *name) 
 {
    lock_acquire(&file_access);
+   
    struct file *f = search_file (fd);
+
    if (f == NULL)
+   {
+      lock_release(&file_access);
       exit (-1);
+   }
+   
+   /*
    // 내부 아이노드 가져오기 및 디렉터리 열기
    struct inode *inode = file_get_inode (f);
    if (!inode || !inode_is_dir (inode))
@@ -399,18 +405,19 @@ bool readdir (int fd, char *name)
       lock_release(&file_access);
       return false;
    }
+   */
 
-   struct dir *dir = dir_open (inode);
-   if (!dir)
+   struct dir *dir = dir_open (file_get_inode (f));
+   if (dir == NULL)
    {
       lock_release(&file_access);
       return false;
    }
-      
-   int i;
-   bool result = true;
-   result = dir_readdir (dir, name);
+
+   bool result = dir_readdir (dir, name);
+   
    lock_release(&file_access);
+   
    return result;
 }
 
@@ -418,28 +425,39 @@ bool readdir (int fd, char *name)
 bool isdir (int fd) 
 {
    lock_acquire(&file_access);
-   /* RYU */
+   
    struct file *f = search_file(fd);
 
    if(f == NULL)
+   {
+      lock_release(&file_access);
       exit(-1);
+   }
 
-   bool ret = inode_is_dir(file_get_inode(f));
+   bool result = inode_is_dir(file_get_inode(f));
+
    lock_release(&file_access);
-   return ret;
+   
+   return result;
 }
 
 int inumber (int fd)
 {
    lock_acquire(&file_access);
+
    struct file *f = search_file (fd);
-   if (f == NULL)
-      exit (-1);
-   
-   disk_sector_t ret = inode_get_inumber(file_get_inode(f));
+  
+   if(f == NULL)
+   {
+      lock_release(&file_access);
+      exit(-1);
+   }
+
    lock_release(&file_access);
-   return ret;
+   
+   return inode_get_inumber(file_get_inode(f));
 }
+
 int symlink (const char* target, const char* linkpath)
 {
    struct thread *t = thread_current();

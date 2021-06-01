@@ -58,7 +58,8 @@ dir_reopen (struct dir *dir) {
 	return dir_open (inode_reopen (dir->inode));
 }
 
-
+/* Destroys DIR and frees associated resources. */
+void 
 dir_close (struct dir *dir) {
 	if (dir != NULL) {
 		// printf("dir close\n");
@@ -273,9 +274,68 @@ dir_is_empty (const struct dir *dir)
 }
 
 //WOOKAYIN
-/* Opens the directory for given path. */
 struct dir *
 dir_open_path (const char *path)
+{
+	char *last;
+	char *token;
+	char *path_copy;
+	struct dir *dir = NULL;
+	struct inode *inode = NULL;
+
+	path_copy = calloc(strlen(path)+1, sizeof(char));
+	
+	if(path_copy == NULL)
+	{
+		PANIC("Fail malloc");
+	}
+
+	strlcpy(path_copy, path, strlen(path) + 1);
+
+	if(path[0] == '/') {
+		dir = dir_open_root();
+	}
+	else {
+		struct thread *t = thread_current();
+		if (t->working_dir == NULL)
+			dir = dir_open_root();
+		else {
+			dir = dir_reopen( t->working_dir );
+		}
+	}
+
+	token = strtok_r(path_copy, "/", &last);
+	while(token != NULL) {
+		if(!dir_lookup(dir, token, &inode)) {
+			dir_close(dir);
+			return NULL; // such directory not exist
+		}
+
+		struct dir *next = dir_open(inode);
+		if(next == NULL) {
+			dir_close(dir);
+			return NULL;
+		}
+
+		dir_close(dir);
+		dir = next;
+
+		token = strtok_r(NULL, "/", &last);
+	}
+
+	if (inode_is_removed (dir_get_inode(dir))) {
+		dir_close(dir);
+		return NULL;
+	}
+
+	free(path_copy);
+
+	return dir;
+}
+
+/* Opens the directory for given path. */
+static struct dir *
+_dir_open_path (const char *path)
 {
    // copy of path, to tokenize
    int l = strlen(path);

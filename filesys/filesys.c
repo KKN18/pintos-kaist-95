@@ -181,11 +181,6 @@ filesys_remove (const char *path) {
 	return success;
 }
 
-struct dir {
-	struct inode *inode;                /* Backing store. */
-	off_t pos;                          /* Current position. */
-};
-
 /* Formats the file system. */
 static void
 do_format (void) {
