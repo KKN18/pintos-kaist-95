@@ -1,5 +1,6 @@
 #ifndef USERPROG_SYSCALL_H
 #define USERPROG_SYSCALL_H
+#define PATH_MAX_LEN 14
 
 #include "lib/user/syscall.h"
 #include "lib/kernel/list.h"
@@ -17,6 +18,8 @@ struct file_info {
     int fd;                     // located file descriptor
     struct list_elem file_elem; // file_list element
 };
+
+
 
 struct lock file_access;
 

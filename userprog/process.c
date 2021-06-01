@@ -354,6 +354,14 @@ process_exit (void) {
 		else e = list_next(e);
 	}
 
+	struct list_elem *s = list_begin(&curr->sym_list);
+
+	for (s; s != list_end(&curr->sym_list);)
+	{
+		struct sym_link *sym_link = list_entry (s, struct sym_link, sym_elem);
+		s = list_remove(s);
+	}
+
 	/* RYU */
 	//ASSERT(0);
 	// printf("%%%%%%%%%%%%%%%%\n");

@@ -66,7 +66,7 @@ test_main (void)
 
   msg ("close \"link_b\"");
   close (fd_b);
-
+  
   msg ("close \"link_c\"");
   close (fd_c);
 

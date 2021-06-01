@@ -136,6 +136,9 @@ struct thread {
 	/* RYU */
 	struct dir *working_dir;
 
+	/* Our Implementation */
+	struct list sym_list;
+
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */

@@ -442,7 +442,14 @@ int inumber (int fd)
 }
 int symlink (const char* target, const char* linkpath)
 {
-   return true;
+   struct thread *t = thread_current();
+   struct sym_link *sym = (struct sym_link *)malloc(sizeof(struct sym_link));
+   if (linkpath[0] == '/') linkpath = linkpath + 1;
+   strlcpy(sym->linkpath, linkpath, PATH_MAX_LEN + 1);
+   strlcpy(sym->path, target, PATH_MAX_LEN + 1);
+   list_push_back(&t->sym_list, &sym->sym_elem);
+
+   return 0;
 }
 
 void syscall_print(int n)

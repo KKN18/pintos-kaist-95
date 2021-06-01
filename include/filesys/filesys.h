@@ -3,14 +3,14 @@
 
 #include <stdbool.h>
 #include "filesys/off_t.h"
-
+#include <list.h>
 
 /* Sectors of system file inodes. */
 #define FREE_MAP_SECTOR 0       /* Free map file inode sector. */
 #define ROOT_DIR_SECTOR 1       /* Root directory file inode sector. */
 
 // RYU
-#define PATH_MAX_LEN 14
+#define PATH_MAX_LEN 20
 
 /* Disk used for file system. */
 extern struct disk *filesys_disk;
@@ -23,5 +23,11 @@ bool filesys_remove (const char *name);
 /* Our Implementation */
 // RYU
 struct dir *parse_path (const char *, char *);
+
+struct sym_link {
+    char linkpath[PATH_MAX_LEN];
+    char path[PATH_MAX_LEN];
+    struct list_elem sym_elem;
+};
 
 #endif /* filesys/filesys.h */
