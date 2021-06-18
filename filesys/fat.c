@@ -180,10 +180,11 @@ fat_fs_init (void) {
 	}
 	/* TODO: Your code goes here. */
 	struct fat_boot *bs = &fat_fs->bs;
-	bs->fat_sectors -= 1;
-	fat_fs->fat_length = (bs->fat_sectors / bs->sectors_per_cluster) / sizeof(cluster_t) * DISK_SECTOR_SIZE;
+	// bs->fat_sectors -= 1;
+	printf("fat sectors : %d\n",bs->fat_sectors);
+	fat_fs->fat_length = (bs->fat_sectors / bs->sectors_per_cluster) / (2*sizeof(cluster_t)) * DISK_SECTOR_SIZE;
    	// printf("fat_start: %d, fat_sectors: %d, fat_length: %d\n", bs->fat_start, bs->fat_sectors, fat_fs->fat_length);
-	fat_fs->data_start = bs->fat_start + (bs->fat_sectors / bs->sectors_per_cluster);
+	fat_fs->data_start = bs->fat_start + (bs->fat_sectors / bs->sectors_per_cluster) + 1;
 	// printf("data_start: %d\n", fat_fs->data_start);
 	// printf("capacity: %d\n", disk_size(filesys_disk));
 }
@@ -345,5 +346,5 @@ fat_to_data_cluster (cluster_t clst) {
 	
 	disk_sector_t data_start = fat_fs->data_start;
 	// printf("cluster: %d, fat_to_data_cluster result: %d\n", clst, data_start + clst - 1);
-	return data_start + clst - 1;
+	return data_start + clst;
 }

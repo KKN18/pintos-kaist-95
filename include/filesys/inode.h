@@ -27,5 +27,6 @@ bool inode_is_dir (const struct inode *inode);
 bool inode_is_removed (const struct inode *inode);
 
 int deny_cnt (struct inode *inode); /* For Debug */
+void inode_all_remove (void);
 
 #endif /* filesys/inode.h */

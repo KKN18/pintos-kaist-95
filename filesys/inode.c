@@ -247,6 +247,32 @@ inode_get_inumber (const struct inode *inode) {
 	return inode->sector;
 }
 
+// void
+// inode_all_write_to_disk (const struct inode *inode) {
+//    if(LOG)
+//    {
+//       printf("inode_all_write_to_disk\n");
+//    }
+
+//    ASSERT (inode != NULL);
+//    lock_acquire(&inode->fat_lock);
+
+//    disk_sector_t start = inode->data.start;
+//    cluster_t temp = (cluster_t) start;
+
+//    while(temp != EOChain)
+//    {
+//       //printf("temp = %d\n", temp);
+// 	  disk_write(filesys_disk, fat_to_data_cluster(temp), )
+//       temp = fat_get(temp);
+//       //disk_write() on cluster_to_sector(temp);
+//    }
+//    // printf("read sector_idx %d\n", temp);
+//    lock_release(&inode->fat_lock);
+
+//    return;
+// }
+
 /* Closes INODE and writes it to disk.
  * If this was the last reference to INODE, frees its memory.
  * If INODE was also a removed inode, frees its blocks. */
@@ -270,11 +296,8 @@ inode_close (struct inode *inode) {
 		if (inode->removed) {
 			// printf("inode removed\n");
 			free_fat_release (inode->sector, 1);
-			int sectors = bytes_to_sectors(inode->data.length);
-			for(int i = 0; i < sectors; i++)
-			{
-				free_fat_release(inode->data.start + i, 1);
-			}
+			disk_write(filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
+			fat_remove_chain(inode->data.start, 0);
 		}
 		free (inode);
 		// printf("free inode\n");
@@ -529,4 +552,25 @@ bool
 inode_is_removed (const struct inode *inode)
 {
    return inode->removed;
+}
+
+/* Called in filesys_done */
+void
+inode_all_remove (void)
+{
+	struct list_elem *p;
+	// ASSERT(open_inodes != NULL);
+	printf("Open inodes : %d\n", list_size(&open_inodes));
+	for(p = list_begin(&open_inodes); p!=list_end(&open_inodes);) 
+	{
+		struct inode *inode = list_entry(p, struct inode, elem);
+		p=list_next(p);
+		list_remove(&inode->elem);
+		free_fat_release (inode->sector, 1);
+		disk_write(filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
+		fat_remove_chain(inode->data.start, 0);
+		// free(inode);
+	}
+	printf("After remove Open inodes : %d\n", list_size(&open_inodes));
+	return;
 }

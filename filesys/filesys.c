@@ -67,6 +67,7 @@ filesys_done (void) {
 		
 	/* Original FS */
 #ifdef EFILESYS
+	inode_all_remove();
 	fat_close ();
 #else
 	free_map_close ();
