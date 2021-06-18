@@ -565,10 +565,11 @@ inode_all_remove (void)
 	{
 		struct inode *inode = list_entry(p, struct inode, elem);
 		p=list_next(p);
-		list_remove(&inode->elem);
-		free_fat_release (inode->sector, 1);
-		disk_write(filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
-		fat_remove_chain(inode->data.start, 0);
+		inode_close(inode);
+		// list_remove(&inode->elem);
+		// free_fat_release (inode->sector, 1);
+		// disk_write(filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
+		// fat_remove_chain(inode->data.start, 0);
 		// free(inode);
 	}
 	printf("After remove Open inodes : %d\n", list_size(&open_inodes));
