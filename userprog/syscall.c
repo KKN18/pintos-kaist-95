@@ -415,6 +415,22 @@ int symlink (const char* target, const char* linkpath)
    return 0;
 }
 
+/* Mounts the disk (chan_no:dev_no) to path. 
+See disk/disk.c for the meaning of chan_no and dev_no. 
+On success, zero is returned. On error, -1 is returned. */
+int mount (const char *path, int chan_no, int dev_no)
+{
+   return -1;
+}
+
+/* Unmount the disk that mounted to path. 
+On success, zero is returned. 
+On error, -1 is returned. */
+int umount (const char *path)
+{
+   return -1;
+}
+
 void syscall_print(int n)
 {
    switch (n)
@@ -620,11 +636,19 @@ syscall_handler (struct intr_frame *f) {
          assert_valid_useraddr(f->R.rsi, f->rsp);
          f->R.rax = symlink(f->R.rdi, f->R.rsi);
          break;
-      /*
-      case default:
-         printf("Unknown syscall\n");
+      case SYS_MOUNT:
+         assert_valid_useraddr(f->R.rdi, f->rsp);
+         assert_valid_useraddr(f->R.rsi, f->rsp);
+         assert_valid_useraddr(f->R.rdx, f->rsp);
+         f->R.rax = mount(f->R.rdi, f->R.rsi, f->R.rdx);
          break;
-      */
+      case SYS_UMOUNT:
+         assert_valid_useraddr(f->R.rdi, f->rsp);
+         f->R.rax = umount(f->R.rdi); 
+         break;
+      //case default:
+      //   PANIC("Unknown syscall\n");
+      //   break;
    }
    /* END */
 }

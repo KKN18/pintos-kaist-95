@@ -78,8 +78,10 @@ test_main (void)
       snprintf (file_name, sizeof file_name, "file%d", i);
       snprintf (dir_name, sizeof dir_name, "dir%d", i);
       CHECK (chdir (".."), "chdir \"..\"");
-      ASSERT(0);
       // Problematic instruction below
+      ASSERT(0);
+      remove (dir_name);
+      ASSERT(0);
       CHECK (remove (dir_name), "remove \"%s\"", dir_name);
       ASSERT(0);
       CHECK (remove (file_name), "remove \"%s\"", file_name);

@@ -408,6 +408,8 @@ static void
 select_sector (struct disk *d, disk_sector_t sec_no) {
 	struct channel *c = d->channel;
 
+	// printf("sec_no: %p\n", sec_no);
+
 	ASSERT (sec_no < d->capacity);
 	ASSERT (sec_no < (1UL << 28));
 

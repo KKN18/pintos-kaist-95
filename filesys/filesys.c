@@ -186,9 +186,6 @@ filesys_remove (const char *path) {
 	struct inode *inode;
 	dir_lookup (dir, name, &inode);
 
-	if(inode_is_removed(inode))
-		return false;
-
 	struct dir *cur_dir = NULL;
 	char temp[PATH_MAX_LEN + 1];
 

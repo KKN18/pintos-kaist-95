@@ -569,7 +569,7 @@ inode_all_remove (void)
 {
 	struct list_elem *p;
 	// ASSERT(open_inodes != NULL);
-	printf("Open inodes : %d\n", list_size(&open_inodes));
+	// printf("Open inodes : %d\n", list_size(&open_inodes));
 	for(p = list_begin(&open_inodes); p!=list_end(&open_inodes);) 
 	{
 		struct inode *inode = list_entry(p, struct inode, elem);
@@ -581,6 +581,6 @@ inode_all_remove (void)
 		// fat_remove_chain(inode->data.start, 0);
 		// free(inode);
 	}
-	printf("After remove Open inodes : %d\n", list_size(&open_inodes));
+	// printf("After remove Open inodes : %d\n", list_size(&open_inodes));
 	return;
 }
