@@ -1,0 +1,8 @@
+rm -f tmp.dsk
+pintos-mkdisk tmp.dsk 2
+pintos -v -k -T 60 --fs-disk=tmp.dsk -p tests/filesys/buffer-cache/bc-easy:bc-easy -p tests/filesys/extended/tar:tar -- -q -f < /dev/null 2> /dev/null > /dev/null
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/buffer-cache/bc-easy:bc-easy -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run bc-easy < /dev/null 2> tests/filesys/buffer-cache/bc-easy.errors > tests/filesys/buffer-cache/bc-easy.output
+rm -f tmp.dsk
+rm -f mnt.dsk
+perl -I../.. ../../tests/filesys/buffer-cache/bc-easy.ck tests/filesys/buffer-cache/bc-easy tests/filesys/buffer-cache/bc-easy.result
+FAIL tests/filesys/buffer-cache/bc-easy

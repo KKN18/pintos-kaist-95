@@ -1,0 +1,12 @@
+rm -f tmp.dsk
+rm -f mnt.dsk
+pintos-mkdisk tmp.dsk 2
+pintos-mkdisk mnt.dsk 2
+pintos -v -k -T 60 --fs-disk=tmp.dsk -p tests/filesys/mount/mount-easy:mount-easy -p tests/filesys/extended/tar:tar -- -q -f < /dev/null 2> /dev/null > /dev/null
+pintos -v -k -T 60 --fs-disk=mnt.dsk -- -q   -f < /dev/null 2> /dev/null > /dev/null
+pintos -v -k -T 60 -m 20   --fs-disk=tmp.dsk -p tests/filesys/mount/mount-easy:mount-easy -p tests/filesys/extended/tar:tar --swap-disk=4 -- -q   -f run mount-easy < /dev/null 2> tests/filesys/mount/mount-easy.errors > tests/filesys/mount/mount-easy.output
+rm -f tmp.dsk
+rm -f mnt.dsk
+perl -I../.. ../../tests/filesys/mount/mount-easy.ck tests/filesys/mount/mount-easy tests/filesys/mount/mount-easy.result
+FAIL tests/filesys/mount/mount-easy
+run: mount the second disk at "/a": FAILED

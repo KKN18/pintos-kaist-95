@@ -118,6 +118,7 @@ pass tests/filesys/extended/syn-rw
 pass tests/filesys/extended/symlink-file
 pass tests/filesys/extended/symlink-dir
 pass tests/filesys/extended/symlink-link
+FAIL tests/filesys/mount/mount-easy
 pass tests/vm/pt-grow-stack
 pass tests/vm/pt-grow-bad
 pass tests/vm/pt-big-stk-obj
@@ -164,6 +165,7 @@ pass tests/vm/swap-file
 pass tests/vm/swap-anon
 pass tests/vm/swap-iter
 pass tests/vm/swap-fork
+FAIL tests/filesys/buffer-cache/bc-easy
 pass tests/filesys/extended/dir-empty-name-persistence
 pass tests/filesys/extended/dir-mk-tree-persistence
 pass tests/filesys/extended/dir-mkdir-persistence
@@ -190,4 +192,4 @@ pass tests/filesys/extended/syn-rw-persistence
 FAIL tests/filesys/extended/symlink-file-persistence
 FAIL tests/filesys/extended/symlink-dir-persistence
 FAIL tests/filesys/extended/symlink-link-persistence
-5 of 192 tests failed.
+7 of 194 tests failed.
