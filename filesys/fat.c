@@ -227,7 +227,10 @@ free_fat_allocate (size_t cnt, disk_sector_t *sectorp) {
 	}
 
 	if(isFound == false)
-		PANIC("Fat is full");
+	{
+		// PANIC("Fat is full");
+		return false;
+	}
 
 	if(free_sector != NULL)
 		*sectorp = free_sector;

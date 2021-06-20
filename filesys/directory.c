@@ -115,7 +115,17 @@ dir_lookup (const struct dir *dir, const char *name,
 	ASSERT (dir != NULL);
 	ASSERT (name != NULL);
 
-	if (lookup (dir, name, &e, NULL))
+	// Wookayin
+	if(strcmp(name, ".") == 0) 
+	{
+		*inode = inode_reopen(dir->inode);
+	}
+	else if (strcmp(name, "..") == 0)
+	{
+		inode_read_at(dir->inode, &e, sizeof e, 0);
+		*inode = inode_open(e.inode_sector);
+	}
+	else if (lookup (dir, name, &e, NULL))
 		*inode = inode_open (e.inode_sector);
 	else
 		*inode = NULL;
@@ -149,13 +159,13 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector, bool is_
 
 	if(is_dir)
 	{
-	/* e is a parent-directory-entry here */
-	struct dir *child_dir = dir_open( inode_open(inode_sector) );
-	if(child_dir == NULL) goto done;
-	e.inode_sector = inode_get_inumber( dir_get_inode(dir) );
-	if (inode_write_at(child_dir->inode, &e, sizeof e, 0) != sizeof e) {
-		dir_close (child_dir);
-		goto done;
+		/* e is a parent-directory-entry here */
+		struct dir *child_dir = dir_open( inode_open(inode_sector) );
+		if(child_dir == NULL) goto done;
+		e.inode_sector = inode_get_inumber( dir_get_inode(dir) );
+		if (inode_write_at(child_dir->inode, &e, sizeof e, 0) != sizeof e) {
+			dir_close (child_dir);
+			goto done;
 	}
 	dir_close (child_dir);
 	}
@@ -268,7 +278,7 @@ dir_is_empty (const struct dir *dir)
 	struct dir_entry e;
 	off_t ofs;
 
-	for (ofs = 2 * sizeof e; /* 0-pos is for parent directory */
+	for (ofs = 2 * sizeof e; /* 0-2*pos is for parent directory */
 		inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 		ofs += sizeof e)
 	{

@@ -169,6 +169,10 @@ inode_create (disk_sector_t sector, off_t length, bool is_dir) {
 			// Write first sector of file
 			disk_write (filesys_disk, fat_to_data_cluster(disk_inode->start), zeros);
 		}
+		else
+		{
+			return false;
+		}
 
 		ASSERT(start != 0);
 
@@ -180,6 +184,11 @@ inode_create (disk_sector_t sector, off_t length, bool is_dir) {
 			if((temp = fat_create_chain(temp)) != 0)
 			{
 				disk_write(filesys_disk, fat_to_data_cluster(cluster_to_sector(temp)), zeros);
+			}
+			else
+			{
+				fat_remove_chain(start, 0);
+				return false;
 			}
 		}
 
