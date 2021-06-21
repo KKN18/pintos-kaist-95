@@ -403,7 +403,15 @@ int inumber (int fd)
    return inode_get_inumber(file_get_inode(f));
 }
 
-int symlink (const char* target, const char* linkpath)
+int symlink (const char *target, const char *linkpath)
+{
+   if (!filesys_symlink(target, linkpath))
+      PANIC("filesys_symlink fail");
+   return 0;
+   
+}
+
+int past_symlink (const char* target, const char* linkpath)
 {
    struct thread *t = thread_current();
    struct sym_link *sym = (struct sym_link *)malloc(sizeof(struct sym_link));

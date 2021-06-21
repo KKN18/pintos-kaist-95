@@ -124,6 +124,7 @@ filesys_create (const char *path, off_t initial_size, bool is_dir) {
 
 	return success;
 }
+
 /* Opens the file with the given NAME.
  * Returns the new file if successful or a null pointer
  * otherwise.
@@ -307,13 +308,13 @@ parse_path (const char *path_o, char *file_name)
 	char path[PATH_MAX_LEN + 3];
 	strlcpy (path, path_o, PATH_MAX_LEN + 2);
 	
-	if (sym_path_exist(path))
-	{
-		// printf("Sympath exist\n");
-		char *converted = convert_sym_path(path);
-		strlcpy(path, converted, PATH_MAX_LEN + 2);
-		free(converted);
-	}
+	// if (sym_path_exist(path))
+	// {
+	// 	// printf("Sympath exist\n");
+	// 	char *converted = convert_sym_path(path);
+	// 	strlcpy(path, converted, PATH_MAX_LEN + 2);
+	// 	free(converted);
+	// }
 
 	if (path[0] == '/')
 		dir = dir_open_root ();
@@ -359,4 +360,29 @@ parse_path (const char *path_o, char *file_name)
 		return NULL;
 	strlcpy (file_name, token, PATH_MAX_LEN);
 	return dir;
+}
+
+bool filesys_symlink (const char *target, const char *linkpath) {
+	// printf("symlink %s start\n", linkpath);
+	char name[PATH_MAX_LEN + 1];
+	struct dir *dir = parse_path (target, name);
+	if (dir == NULL)
+		return false;
+	struct inode *temp_inode = NULL;
+	if (!dir_lookup (dir, name, &temp_inode))
+		return false;
+	// printf("filesys_open dir close\n");
+	disk_sector_t sector = inode_get_inumber(temp_inode);
+	// printf("name %s sector %d\n", name, sector);
+	inode_close(temp_inode);
+	char symlink[PATH_MAX_LEN + 1];
+	strlcpy(symlink, linkpath, PATH_MAX_LEN+1);
+
+
+	if (!sym_inode_create(sector, symlink, dir))
+		return false;
+
+	
+	return true;
+	
 }
