@@ -85,13 +85,17 @@ filesys_create (const char *path, off_t initial_size, bool is_dir) {
 	{
 		printf("filesys_create: %s, initial_size: %d\n", path, initial_size);	
 	}
-		
 	disk_sector_t inode_sector = 0;
 	
 	// RYU
 	bool success;
 	char name[PATH_MAX_LEN + 1];
 	struct dir *dir = parse_path(path, name);
+	ASSERT(dir != NULL);
+
+	struct inode *inode;
+	if(dir_lookup(dir, name, &inode) && inode_is_sym(inode))
+		return true;
 
 	if(is_dir) 
 	{
@@ -351,8 +355,14 @@ parse_path (const char *path_o, char *file_name)
 		}
 
 		dir_close (dir);
+		// if (inode_is_sym (inode))
+		// {
+		// 	printf("I am sym inode!\n");
+		// 	dir = get_dir_from_sym(inode);
+		// }
 		dir = dir_open (inode);
-
+		
+	
 		token = next_token;
 		next_token = strtok_r (NULL, "/", &save_ptr);
 	}
@@ -362,24 +372,67 @@ parse_path (const char *path_o, char *file_name)
 	return dir;
 }
 
+struct dir *parse_sympath (const char *sympath, char *parsed_path)
+{
+	struct dir *dir = NULL;
+	char path[PATH_MAX_LEN + 3];
+	strlcpy(path, sympath, PATH_MAX_LEN + 2);
+
+	if (path[0] == '/') dir = dir_open_root();
+	else return NULL;
+	
+	char *remainder;
+	char *ptr = strtok_r (path, "/", &remainder);
+	char *next_ptr = strtok_r (NULL, "/", &remainder);
+
+
+	struct inode *inode = NULL;
+	if (!dir_lookup (dir, ptr, &inode))
+	{
+		dir_close(dir);
+		return NULL;
+	}
+	dir_close(dir);
+	dir = dir_open(inode);
+
+	strlcpy(parsed_path, next_ptr, PATH_MAX_LEN);
+	return dir;
+}
+
 bool filesys_symlink (const char *target, const char *linkpath) {
-	// printf("symlink %s start\n", linkpath);
 	char name[PATH_MAX_LEN + 1];
+
 	struct dir *dir = parse_path (target, name);
-	if (dir == NULL)
-		return false;
+	ASSERT(dir != NULL);
+
 	struct inode *temp_inode = NULL;
 	if (!dir_lookup (dir, name, &temp_inode))
-		return false;
+	{
+		if (!filesys_create(target, 0, false))
+			return false;
+		if (!dir_lookup (dir, name, &temp_inode))
+			return false;
+		set_sym_inode(temp_inode);
+	}
 	// printf("filesys_open dir close\n");
 	disk_sector_t sector = inode_get_inumber(temp_inode);
-	// printf("name %s sector %d\n", name, sector);
 	inode_close(temp_inode);
 	char symlink[PATH_MAX_LEN + 1];
 	strlcpy(symlink, linkpath, PATH_MAX_LEN+1);
 
+	char parsed_path[PATH_MAX_LEN + 1];
+	struct dir *sym_dir = parse_sympath(linkpath, parsed_path);
+	if (sym_dir == NULL) 
+	{
+		strlcpy(parsed_path, linkpath, PATH_MAX_LEN + 1);
+		sym_dir = dir;
+	}
+	else 
+	{
+		dir_close(dir);
+	}
 
-	if (!sym_inode_create(sector, symlink, dir))
+	if (!sym_inode_create(sector, parsed_path, sym_dir))
 		return false;
 
 	

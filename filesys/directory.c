@@ -389,3 +389,10 @@ _dir_open_path (const char *path)
 
    return curr;
 }
+
+struct dir *get_dir_from_sym (struct inode *sym_inode)
+{
+	struct inode *inode = sector_inode_open (inode_get_inumber(sym_inode));
+	struct dir *dir = dir_open(inode);
+	return dir;
+}

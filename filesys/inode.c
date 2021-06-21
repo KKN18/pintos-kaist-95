@@ -415,6 +415,7 @@ sector_inode_open (disk_sector_t sector) {
 	lock_init(&inode->fat_lock);
 	return inode;
 }
+
 void inode_update (struct inode *sym_inode)
 {
 	ASSERT(sym_inode -> is_sym == true);
@@ -646,6 +647,13 @@ inode_all_remove (void)
 	return;
 }
 
+bool inode_is_sym (struct inode *inode)
+{
+	return inode->is_sym;
+}
+
+
+
 bool sym_inode_create (disk_sector_t sector, const char *sympath, struct dir *dir)
 {
 	struct inode_disk *data = data_open(sector);
@@ -671,4 +679,9 @@ bool sym_inode_create (disk_sector_t sector, const char *sympath, struct dir *di
 	dir_close (dir);
 	free(data);
 	return true;
+}
+
+void set_sym_inode (struct inode *inode)
+{
+	inode->is_sym = true;
 }

@@ -31,4 +31,5 @@ bool dir_readdir (struct dir *, char name[NAME_MAX + 1]);
 bool
 dir_is_empty (const struct dir *dir);
 struct dir *dir_open_path (const char *path);
+struct dir *get_dir_from_sym (struct inode *sym_inode);
 #endif /* filesys/directory.h */
