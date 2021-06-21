@@ -8,6 +8,7 @@
 #include "threads/malloc.h"
 /* Our Implementation */
 #include "filesys/fat.h"
+#include "filesys/directory.h"
 
 #define LOG 0
 /* END */
@@ -43,6 +44,7 @@ struct inode {
 	int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
 	struct inode_disk data;             /* Inode content. */
 	/* Our Implementation */
+	bool is_sym;
 	struct lock *fat_lock;				/* Lock when accessing FAT */
 };
 
@@ -232,6 +234,7 @@ inode_open (disk_sector_t sector) {
 	inode->open_cnt = 1;
 	inode->deny_write_cnt = 0;
 	inode->removed = false;
+	inode->is_sym = false;
 	disk_read (filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
 	// printf("start = %d\n", inode->data.start);
 	lock_init(&inode->fat_lock);
@@ -295,7 +298,8 @@ inode_close (struct inode *inode) {
 	/* Ignore null pointer. */
 	if (inode == NULL)
 		return;
-
+	disk_write(filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
+	// printf("Close sector %d length %d\n", inode->sector, inode->data.length);
 	/* Release resources if this was the last opener. */
 	if (--inode->open_cnt == 0) {
 		/* Remove from inode list and release lock. */
@@ -305,7 +309,6 @@ inode_close (struct inode *inode) {
 		if (inode->removed) {
 			// printf("inode removed\n");
 			free_fat_release (inode->sector, 1);
-			disk_write(filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
 			fat_remove_chain(inode->data.start, 0);
 		}
 		free (inode);
@@ -387,6 +390,62 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 	return bytes_read;
 }
 
+struct inode *
+sector_inode_open (disk_sector_t sector) {
+	if(LOG)
+	{
+		printf("inode_open\n");
+	}
+	struct list_elem *e;
+	struct inode *inode;
+
+	/* Check whether this inode is already open. */
+	for (e = list_begin (&open_inodes); e != list_end (&open_inodes);
+			e = list_next (e)) {
+		inode = list_entry (e, struct inode, elem);
+		if (inode->sector == sector && inode->is_sym == false) {
+			inode_reopen (inode);
+			return inode;
+		}
+	}
+	
+	inode = malloc (sizeof *inode);
+	if (inode == NULL)
+		return NULL;
+	/* Initialize. */
+	list_push_front (&open_inodes, &inode->elem);
+	inode->sector = sector;
+	inode->open_cnt = 1;
+	inode->deny_write_cnt = 0;
+	inode->removed = false;
+	inode->is_sym = false;
+	disk_read (filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
+	// printf("start = %d\n", inode->data.start);
+	lock_init(&inode->fat_lock);
+	return inode;
+}
+
+void inode_update (struct inode *sym_inode)
+{
+	ASSERT(sym_inode -> is_sym == true);
+	
+	disk_sector_t sector = sym_inode->sector;
+	struct list_elem *e;
+	struct inode *inode;
+
+	/* Check whether this inode is already open. */
+	for (e = list_begin (&open_inodes); e != list_end (&open_inodes);
+			e = list_next (e)) {
+		inode = list_entry (e, struct inode, elem);
+		if (inode->sector == sector) {
+			disk_read(filesys_disk, fat_to_data_cluster(sector), &inode->data);
+		}
+	}
+	
+	
+	// printf("af update length %d\n", inode->data.length);
+}
+
 /* Writes SIZE bytes from BUFFER into INODE, starting at OFFSET.
  * Returns the number of bytes actually written, which may be
  * less than SIZE if end of file is reached or an error occurs.
@@ -403,14 +462,13 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 	off_t bytes_written = 0;
 	uint8_t *bounce = NULL;
 
-
 	if (inode->deny_write_cnt)
 		return 0;
 
 	while (size > 0) {
 		/* Sector to write, starting byte offset within sector. */
 		disk_sector_t sector_idx = byte_to_sector (inode, offset);
-
+		// printf("After byte_to_sector %d\n", sector_idx);
 		/* Our Implementation */
 		// if byte_to_sector return -1, fat_creat_chain()
 		// Offset >= Data.length
@@ -421,14 +479,13 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 			disk_sector_t start = inode->data.start;
 			cluster_t temp = (cluster_t) start;
 			cluster_t prev = temp;
-
 			// Arrive at the last sector
 			while(temp != EOChain)
 			{
 				prev = temp;
 				temp = fat_get(temp);
+				// printf("temp %d\n", temp);
 			}
-
 			// fat[temp] = EOChain
 			temp = prev;
 
@@ -444,9 +501,8 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 
 				disk_write(filesys_disk, fat_to_data_cluster(cluster_to_sector(temp)), zeros);
 			}
-
 			struct inode_disk *disk_inode = &inode->data;
-			disk_read (filesys_disk, fat_to_data_cluster(inode->sector), disk_inode);
+			// disk_read (filesys_disk, fat_to_data_cluster(inode->sector), disk_inode);
 			disk_inode->length = offset + size;
 			disk_inode->magic = INODE_MAGIC;
 			disk_inode->is_dir = inode->data.is_dir;
@@ -457,7 +513,6 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		}
 
 		int sector_ofs = offset % DISK_SECTOR_SIZE;
-
 		/* Bytes left in inode, bytes left in sector, lesser of the two. */
 		off_t inode_left = inode_length (inode) - offset;
 		int sector_left = DISK_SECTOR_SIZE - sector_ofs;
@@ -501,6 +556,12 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 	}
 	free (bounce);
 	// printf("finish inode_write_at\n");
+
+	if (inode->is_sym == true)
+	{
+		inode_update(inode);
+	}
+
 	return bytes_written;
 }
 
@@ -563,6 +624,16 @@ inode_is_removed (const struct inode *inode)
    return inode->removed;
 }
 
+struct inode_disk *data_open (disk_sector_t sector)
+{
+	struct inode_disk *inode_disk = malloc(sizeof (struct inode_disk ));
+	if (inode_disk == NULL)
+		PANIC("inode_disk malloc fail");
+	disk_read (filesys_disk, fat_to_data_cluster(sector), inode_disk);
+	ASSERT(inode_disk != NULL);
+	return inode_disk;
+} 
+
 /* Called in filesys_done */
 void
 inode_all_remove (void)
@@ -583,4 +654,43 @@ inode_all_remove (void)
 	}
 	// printf("After remove Open inodes : %d\n", list_size(&open_inodes));
 	return;
+}
+
+bool inode_is_sym (struct inode *inode)
+{
+	return inode->is_sym;
+}
+
+
+
+bool sym_inode_create (disk_sector_t sector, const char *sympath, struct dir *dir)
+{
+	struct inode_disk *data = data_open(sector);
+	disk_sector_t new_sector = sector;
+	fat_put(new_sector, EOChain);
+	struct inode *inode = malloc(sizeof(struct inode));
+	inode->sector = new_sector;
+	inode->open_cnt = 1;
+	inode->removed = false;
+	inode->deny_write_cnt = 0;
+	inode->is_sym = true;
+	
+	struct inode_disk *new_data = &inode->data;
+	new_data->start = data->start;
+	new_data->length = data->length;
+	new_data->is_dir = data->is_dir;
+
+	lock_init(&inode->fat_lock);
+
+	list_push_front(&open_inodes, &inode->elem);
+
+	dir_add (dir, sympath, new_sector, data->is_dir);
+	dir_close (dir);
+	free(data);
+	return true;
+}
+
+void set_sym_inode (struct inode *inode)
+{
+	inode->is_sym = true;
 }

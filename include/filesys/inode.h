@@ -27,6 +27,10 @@ bool inode_is_dir (const struct inode *inode);
 bool inode_is_removed (const struct inode *inode);
 
 int deny_cnt (struct inode *inode); /* For Debug */
+// bool sym_inode_create (disk_sector_t sector, const char *sympath, struct dir *dir);
+struct inode * sector_inode_open (disk_sector_t sector);
+bool inode_is_sym (struct inode *inode);
 void inode_all_remove (void);
+void set_sym_inode (struct inode *inode);
 
 #endif /* filesys/inode.h */

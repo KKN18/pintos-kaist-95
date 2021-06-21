@@ -29,5 +29,5 @@ struct sym_link {
     char path[PATH_MAX_LEN];
     struct list_elem sym_elem;
 };
-
+bool filesys_symlink (const char *target, const char *linkpath);
 #endif /* filesys/filesys.h */
