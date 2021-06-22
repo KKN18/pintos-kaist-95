@@ -1,0 +1,43 @@
+Kernel command line: -q -f put dir-rm-parent put tar run dir-rm-parent
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  117,760,000 loops/s.
+hd0:0: detected 377 sector (188 kB) disk, model "QEMU HARDDISK", serial "QM00001"
+hd0:1: detected 4,032 sector (1 MB) disk, model "QEMU HARDDISK", serial "QM00002"
+hd1:0: detected 224 sector (112 kB) disk, model "QEMU HARDDISK", serial "QM00003"
+hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004"
+fat sectors : 32
+fat_start: 1, fat_sectors: 32, fat_length: 4000
+data_start: 34
+capacity: 4032
+Formatting file system...fat sectors : 32
+fat_start: 1, fat_sectors: 32, fat_length: 4000
+data_start: 34
+capacity: 4032
+done.
+Boot complete.
+Putting 'dir-rm-parent' into the file system...
+Putting 'tar' into the file system...
+Executing 'dir-rm-parent':
+(dir-rm-parent) begin
+(dir-rm-parent) mkdir "a"
+(dir-rm-parent) chdir "a"
+(dir-rm-parent) mkdir "b"
+(dir-rm-parent) chdir "b"
+(dir-rm-parent) remove "/a" (must fail)
+(dir-rm-parent) end
+dir-rm-parent: exit(0)
+Execution of 'dir-rm-parent' complete.
+Timer: 93 ticks
+Thread: 36 idle ticks, 50 kernel ticks, 7 user ticks
+hd0:0: 0 reads, 0 writes
+hd0:1: 381 reads, 549 writes
+hd1:0: 224 reads, 0 writes
+hd1:1: 0 reads, 0 writes
+Console: 1360 characters output
+Keyboard: 0 keys pressed
+Exception: 0 page faults
+Powering off...

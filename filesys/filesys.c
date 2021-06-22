@@ -86,12 +86,12 @@ filesys_create (const char *path, off_t initial_size, bool is_dir) {
 		printf("filesys_create: %s, initial_size: %d\n", path, initial_size);	
 	}
 	disk_sector_t inode_sector = 0;
-	
 	// RYU
 	bool success;
 	char name[PATH_MAX_LEN + 1];
 	struct dir *dir = parse_path(path, name);
-	ASSERT(dir != NULL);
+	if (dir == NULL)
+		return false;
 
 	struct inode *inode;
 	if(dir_lookup(dir, name, &inode) && inode_is_sym(inode))
@@ -112,7 +112,6 @@ filesys_create (const char *path, off_t initial_size, bool is_dir) {
 			&& dir_add (dir, name, inode_sector, is_dir));
 	}
 	
-
 	if (!success && inode_sector != 0)
 		free_fat_release (inode_sector, 1);
 
@@ -125,7 +124,6 @@ filesys_create (const char *path, off_t initial_size, bool is_dir) {
 	}
 
 	dir_close (dir);
-
 	return success;
 }
 
@@ -302,7 +300,6 @@ parse_path (const char *path_o, char *file_name)
 		printf("parse_path\n");	
 	}
 	struct dir *dir = NULL;
-
 	// 기본 예외 처리
 	if (!path_o || !file_name)
 		return NULL;
@@ -323,17 +320,18 @@ parse_path (const char *path_o, char *file_name)
 	if (path[0] == '/')
 		dir = dir_open_root ();
 	else
+	{
 		dir = dir_reopen (thread_current ()->working_dir);
+	}
+		
 
 	// 아이노드가 어떤 이유로 제거되었거나 디렉터리가 아닌 경우
 	if (!inode_is_dir (dir_get_inode (dir)))
 		return NULL;
-	
 	char *token, *next_token, *save_ptr;
 
 	token = strtok_r (path, "/", &save_ptr);
 	next_token = strtok_r (NULL, "/", &save_ptr);
-
 	if (token == NULL)
 	{
 		strlcpy (file_name, ".", PATH_MAX_LEN);

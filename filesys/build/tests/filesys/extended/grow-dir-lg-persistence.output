@@ -1,0 +1,30 @@
+Kernel command line: -q run 'tar fs.tar /' get fs.tar
+0 ~ 9fc00 1
+100000 ~ ffe0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0xffe0000 (Usable: 260,992 kB)
+Calibrating timer...  52,377,600 loops/s.
+hd0:0: detected 377 sector (188 kB) disk, model "QEMU HARDDISK", serial "QM00001"
+hd0:1: detected 4,032 sector (1 MB) disk, model "QEMU HARDDISK", serial "QM00002"
+hd1:0: detected 2,048 sector (1024 kB) disk, model "QEMU HARDDISK", serial "QM00003"
+hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004"
+fat sectors : 32
+fat_start: 1, fat_sectors: 32, fat_length: 4000
+data_start: 34
+capacity: 4032
+Boot complete.
+Executing 'tar fs.tar /':
+tar: exit(0)
+Execution of 'tar fs.tar /' complete.
+Getting 'fs.tar' from the file system...
+Timer: 160 ticks
+Thread: 75 idle ticks, 33 kernel ticks, 52 user ticks
+hd0:0: 0 reads, 0 writes
+hd0:1: 2585 reads, 1072 writes
+hd1:0: 0 reads, 328 writes
+hd1:1: 0 reads, 0 writes
+Console: 981 characters output
+Keyboard: 0 keys pressed
+Exception: 0 page faults
+Powering off...

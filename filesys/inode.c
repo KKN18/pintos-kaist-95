@@ -298,13 +298,13 @@ inode_close (struct inode *inode) {
 	/* Ignore null pointer. */
 	if (inode == NULL)
 		return;
-	disk_write(filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
+	
 	// printf("Close sector %d length %d\n", inode->sector, inode->data.length);
 	/* Release resources if this was the last opener. */
 	if (--inode->open_cnt == 0) {
 		/* Remove from inode list and release lock. */
 		list_remove (&inode->elem);
-
+		disk_write(filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
 		/* Deallocate blocks if removed. */
 		if (inode->removed) {
 			// printf("inode removed\n");
@@ -313,6 +313,7 @@ inode_close (struct inode *inode) {
 		}
 		free (inode);
 		// printf("free inode\n");
+		
 	}
 	// printf("finish inode close\n");
 }
@@ -653,6 +654,23 @@ inode_all_remove (void)
 		// free(inode);
 	}
 	// printf("After remove Open inodes : %d\n", list_size(&open_inodes));
+
+	// struct inode *inode = malloc(sizeof (struct inode));
+	// inode->sector = 229;
+	// inode->open_cnt = 1;
+	// inode->deny_write_cnt = 0;
+	// inode->removed = false;
+	// inode->is_sym = false;
+	// lock_init(&inode->fat_lock);
+	// disk_read(filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
+	// struct inode *temp_inode;
+	// printf("Okay\n");
+	// if (dir_lookup(dir_open(inode), "file", &temp_inode))
+	// {
+	// 	printf("Found file\n");
+	// }
+	// else printf("No file\n");
+
 	return;
 }
 

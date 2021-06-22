@@ -1,0 +1,20 @@
+FAIL
+Extracted file system contents are not correct.
+a/b/file is missing from the file system.
+a/link_b/file is missing from the file system.
+
+Actual contents of file system:
+a: directory
+a/b: directory
+a/link_b: directory
+symlink-dir: 55720-byte file
+tar: 58880-byte file
+
+Expected contents of file system:
+a: directory
+a/b: directory
+a/b/file: 72943-byte file
+a/link_b: directory
+a/link_b/file: 72943-byte file
+symlink-dir: 55720-byte file
+tar: 58880-byte file
