@@ -121,8 +121,8 @@ dir_lookup (const struct dir *dir, const char *name,
 	}
 	else if (strcmp(name, "..") == 0)	// Given name is parent directory
 	{
-		// Like in lookup function, we can read second offset of inode using inode_read_at function
-		// We add parent directory information in the second offset at filesys_create()
+		// Like in lookup function, we can read second entry of inode using inode_read_at function
+		// We add parent directory information in the second entry at filesys_create()
 		inode_read_at(dir->inode, &e, sizeof e, sizeof e);  
 		*inode = inode_open(e.inode_sector);
 	}
@@ -216,11 +216,6 @@ dir_remove (struct dir *dir, const char *name) {
 			goto done;
 		}
 		dir_close (inode_dir);
-
-
-		// bool is_empty = dir_is_empty (target);
-		// dir_close (target);
-		// if (!is_empty) goto done; // can't delete
   	}
 
 	/* Erase directory entry. */
@@ -268,9 +263,9 @@ bool
 dir_is_empty (struct dir *dir)
 {
 	struct dir_entry e;
-	size_t ofs;
+	size_t ofs = 2 * sizeof e; // Initially self, parent directory exist
 
-	for (ofs = 2 * sizeof e; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
+	for (ofs; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 		ofs += sizeof e)
 	{
 		if (e.in_use)	// Used entry exists

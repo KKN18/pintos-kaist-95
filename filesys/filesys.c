@@ -86,12 +86,16 @@ filesys_create (const char *name, off_t initial_size, bool is_dir) {
 	disk_sector_t inode_sector = 0;
 	
 	char parsed_path[PATH_MAX_LEN + 1];
-	struct dir *dir = parse_path(name, parsed_path);
+	struct dir *dir = parse_path(name, parsed_path);	// Parse name and get file name to parsed_path
 	if (dir == NULL)
 		return false;
 	
 	struct inode *inode;
-	if (dir_lookup(dir, parsed_path, &inode) && inode_is_sym(inode))
+
+	// If file is already created by sym link, just return true
+	// We chose the design that if symlink is created before the pointing file is created, 
+	// then also create the file to support symlink
+	if (dir_lookup(dir, parsed_path, &inode) && inode_is_sym(inode))	
 		return true;
 
 
@@ -115,6 +119,8 @@ filesys_create (const char *name, off_t initial_size, bool is_dir) {
 			return false;
 		}
 
+		// If we are creating directory, then add itself in first entry
+		// and add current directory as parent directory in second entry
 		struct dir *new_dir = dir_open (inode_open (inode_sector));
 		dir_add (new_dir, ".", inode_sector, true);
 		dir_add (new_dir, "..", inode_get_inumber (dir_get_inode (dir)), true);
@@ -333,16 +339,21 @@ struct dir * parse_path (const char *bf_path, char *af_path)
 	}
 	if (bf_path == NULL || strlen(bf_path) == 0)
 		return NULL;
-	char path[PATH_MAX_LEN + 3];
-	strlcpy (path, bf_path, PATH_MAX_LEN + 2);
-	struct dir *dir = dir_reopen(thread_current()->working_dir);
 
-	if (path[0] == '/')
-	{
-		dir_close(dir);
+	struct dir *dir;
+	if (bf_path[0] == '/')
 		dir = dir_open_root();
-	}
-	
+	else if (thread_current()->working_dir == NULL)
+		dir = dir_open_root();
+	else
+		dir = dir_reopen(thread_current()->working_dir);
+
+
+	// To handle such long filename, initially use more buffer than PATH_MAX_LEN
+	// We will return error if the path is fully copied later
+	char path[PATH_MAX_LEN + 3];	
+	strlcpy (path, bf_path, PATH_MAX_LEN + 2);
+
 	if (!inode_is_dir (dir_get_inode (dir)))  // To prevent error cases such as dir-rm-cwd
 		return NULL;
 
@@ -353,9 +364,7 @@ struct dir * parse_path (const char *bf_path, char *af_path)
 		strlcpy(af_path, ".", PATH_MAX_LEN); // ptr is pointing to nothing
 		return dir;
 	}
-
-	char *next_ptr = strtok_r(NULL, "/", &remainder);
-	while (ptr != NULL && next_ptr != NULL)
+	while (ptr != NULL && strlen(remainder)!= 0)
 	{
 		struct inode *inode = NULL;
 		if (!valid_path (dir, ptr, &inode)) // check whether the inode is in dir and it is directory
@@ -368,9 +377,7 @@ struct dir * parse_path (const char *bf_path, char *af_path)
 		dir_close(dir);
 		dir = dir_open(inode);
 
-		ptr = next_ptr;	// Check next path if it exists (at least one '/' exist)
-		next_ptr = strtok_r(NULL, "/", &remainder);
-
+		ptr = strtok_r(NULL, "/", &remainder);
 	}
 	if (strlen(ptr) == PATH_MAX_LEN + 1)  // Error if the filename is too long
 		return NULL;
