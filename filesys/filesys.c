@@ -51,8 +51,6 @@ filesys_init (bool format) {
 	free_map_open ();
 #endif
 
-	/* RYU */
-	// printf("working dir\n");
 	thread_current()->working_dir = dir_open_root();
 }
 
@@ -79,52 +77,74 @@ filesys_done (void) {
  * Fails if a file named NAME already exists,
  * or if internal memory allocation fails. */
 bool
-filesys_create (const char *path, off_t initial_size, bool is_dir) {
+filesys_create (const char *name, off_t initial_size, bool is_dir) {
 	
 	if(LOG)
 	{
-		printf("filesys_create: %s, initial_size: %d\n", path, initial_size);	
+		printf("filesys_create: %s, initial_size: %d\n", name, initial_size);	
 	}
 	disk_sector_t inode_sector = 0;
-	// RYU
-	bool success;
-	char name[PATH_MAX_LEN + 1];
-	struct dir *dir = parse_path(path, name);
+	
+	char parsed_path[PATH_MAX_LEN + 1];
+	struct dir *dir = parse_path(name, parsed_path);
 	if (dir == NULL)
 		return false;
-
+	
 	struct inode *inode;
-	if(dir_lookup(dir, name, &inode) && inode_is_sym(inode))
+	if (dir_lookup(dir, parsed_path, &inode) && inode_is_sym(inode))
 		return true;
 
-	if(is_dir) 
-	{
-		success = (dir != NULL
-					&& free_fat_allocate (1, &inode_sector)
-					&& dir_create (inode_sector, 16)
-					&& dir_add (dir, name, inode_sector, is_dir));
-	}
-	else 
-	{
-		success = (dir != NULL
-			&& free_fat_allocate (1, &inode_sector)
-			&& inode_create (inode_sector, initial_size, is_dir)
-			&& dir_add (dir, name, inode_sector, is_dir));
-	}
-	
-	if (!success && inode_sector != 0)
-		free_fat_release (inode_sector, 1);
 
-	if (success && is_dir)
+	if (is_dir)
 	{
+		if (!free_fat_allocate (1, &inode_sector))
+		{
+			dir_close(dir);
+			return false;
+		}
+		if (!dir_create (inode_sector, 16))
+		{
+			free_fat_release(inode_sector, 1);
+			dir_close(dir);
+			return false;
+		}
+		if (!dir_add (dir, parsed_path, inode_sector, true))
+		{
+			free_fat_release(inode_sector, 1);
+			dir_close(dir);
+			return false;
+		}
+
 		struct dir *new_dir = dir_open (inode_open (inode_sector));
 		dir_add (new_dir, ".", inode_sector, true);
 		dir_add (new_dir, "..", inode_get_inumber (dir_get_inode (dir)), true);
 		dir_close (new_dir);
+		dir_close (dir);
+
+	}
+	else
+	{
+		if (!free_fat_allocate (1, &inode_sector))
+		{
+			dir_close(dir);
+			return false;
+		}
+		if (!inode_create (inode_sector, initial_size, false))
+		{
+			free_fat_release(inode_sector, 1);
+			dir_close(dir);
+			return false;
+		}
+		if (!dir_add (dir, parsed_path, inode_sector, false))
+		{
+			free_fat_release(inode_sector, 1);
+			dir_close(dir);
+			return false;
+		}
 	}
 
-	dir_close (dir);
-	return success;
+	return true;
+	
 }
 
 /* Opens the file with the given NAME.
@@ -132,77 +152,79 @@ filesys_create (const char *path, off_t initial_size, bool is_dir) {
  * otherwise.
  * Fails if no file named NAME exists,
  * or if an internal memory allocation fails. */
-// RYU
-struct file * filesys_open (const char *path) {
+struct file * filesys_open (const char *name) {
 	if(LOG)
 	{
 		printf("filesys_open\n");	
 	}
 	// printf("original path: %s\n", path);
-	char name[PATH_MAX_LEN + 1];
-	struct dir *dir = parse_path (path, name);
+	char parsed_path[PATH_MAX_LEN + 1];
+	struct dir *dir = parse_path (name, parsed_path);
 	if (dir == NULL)
 		return NULL;
+
 	struct inode *inode = NULL;
-	if (!dir_lookup (dir, name, &inode))
+	if (!dir_lookup (dir, parsed_path, &inode))
+	{
+		dir_close(dir);
 		return NULL;
-	// printf("filesys_open dir close\n");
-	dir_close (dir);
-	return file_open (inode);
+	}
+	dir_close(dir);
+
+	struct file *ret = file_open (inode);
+	if (ret == NULL)
+		return NULL;
+	return ret;
 }
+
 
 
 /* Deletes the file named NAME.
  * Returns true if successful, false on failure.
  * Fails if no file named NAME exists,
  * or if an internal memory allocation fails. */
-// RYU
-bool
-filesys_remove (const char *path) {
+bool filesys_remove (const char *name) {
 	if(LOG)
 	{
-		printf("filesys_remove: %s\n", path);	
+		printf("filesys_remove: %s\n", name);	
 	}
-	
-	char name[PATH_MAX_LEN + 1];
-
-	bool sym_path = is_sym_path(path);
-	if (sym_path)
-	{
-		struct thread *t = thread_current();
-		struct list *sym_list = &t->sym_list;
-		struct list_elem *e;
-
-		for (e = list_begin(sym_list); e != list_end(sym_list); e = list_next(e))
-		{
-			struct sym_link *sym = list_entry(e, struct sym_link, sym_elem);
-			if (!strcmp(sym->linkpath, path)) 
-			{
-				list_remove(e);
-				return true;
-			}
-		}
-		PANIC("NOT REACHED\n");
-	}
-
-	struct dir *dir = parse_path (path, name);
+	char parsed_path[PATH_MAX_LEN + 1];
+	struct dir *dir = parse_path (name, parsed_path);
+	if (dir == NULL)
+		return false;
 	struct inode *inode;
-	dir_lookup (dir, name, &inode);
-
-	struct dir *cur_dir = NULL;
-	char temp[PATH_MAX_LEN + 1];
-
-	bool success = false;
-	if (!inode_is_dir (inode) ||
-		((cur_dir = dir_open (inode)) && !dir_readdir (cur_dir, temp)))
-		success = dir != NULL && dir_remove (dir, name);
-	// printf("filesys remove dir close\n");
-	dir_close (dir);
-	
-	if (cur_dir)
-		// printf("filesys remove cur_dir dir close\n");
-		dir_close (cur_dir);
+	if (!dir_lookup (dir, parsed_path, &inode))
+	{
+		dir_close(dir);
+		return false;
+	}
+	bool success;
+	if (inode_is_dir (inode))
+	{
+		struct dir *inode_dir = dir_open (inode);
+		if (inode_dir == NULL)
+		{
+			dir_close(dir);
+			return false;
+		}
+		char buffer[PATH_MAX_LEN + 1];
+		if (dir_readdir (inode_dir, buffer)) // inode directory should be empty
+		{
+			dir_close(dir);
+			dir_close(inode_dir);
+			return false;
+		}
+		success = dir != NULL && dir_remove (dir, parsed_path);
+		dir_close(dir);
+		dir_close(inode_dir);
+	}
+	else
+	{
+		success = dir != NULL && dir_remove (dir, parsed_path);
+		dir_close(dir);
+	}
 	return success;
+
 }
 
 /* Formats the file system. */
@@ -228,12 +250,12 @@ do_format (void) {
 	free_map_close ();
 #endif
 	
-	// RYU
-	struct dir *root = dir_open_root ();
-	dir_add (root, ".", ROOT_DIR_SECTOR, true);
-	dir_add (root, "..", ROOT_DIR_SECTOR, true);  
-	// printf("do_format dir close\n");
-	dir_close (root);
+	struct dir *dir = dir_open_root ();	
+	// Let both two entries (., ..) point self because it is root directory
+	dir_add (dir, ".", ROOT_DIR_SECTOR, true);
+	dir_add (dir, "..", ROOT_DIR_SECTOR, true); 
+
+	dir_close (dir);
 	printf ("done.\n");
 }
 
@@ -290,85 +312,72 @@ char *convert_sym_path (char *path)
 	return result;
 }
 
-/* Our Implementation */
-// RYU
-struct dir *
-parse_path (const char *path_o, char *file_name)
+bool valid_path (struct dir *dir, char *name, struct inode **inode)
+{
+	if (!dir_lookup (dir, name, inode))
+	{
+		return false;
+	}
+	if (!inode_is_dir (*inode))
+	{
+		return false;
+	}
+	return true;
+}
+
+struct dir * parse_path (const char *bf_path, char *af_path)
 {
 	if(LOG)
 	{
 		printf("parse_path\n");	
 	}
-	struct dir *dir = NULL;
-	// 기본 예외 처리
-	if (!path_o || !file_name)
+	if (bf_path == NULL || strlen(bf_path) == 0)
 		return NULL;
-	if (strlen (path_o) == 0)
-		return NULL;
-
 	char path[PATH_MAX_LEN + 3];
-	strlcpy (path, path_o, PATH_MAX_LEN + 2);
-	
-	// if (sym_path_exist(path))
-	// {
-	// 	// printf("Sympath exist\n");
-	// 	char *converted = convert_sym_path(path);
-	// 	strlcpy(path, converted, PATH_MAX_LEN + 2);
-	// 	free(converted);
-	// }
+	strlcpy (path, bf_path, PATH_MAX_LEN + 2);
+	struct dir *dir = dir_reopen(thread_current()->working_dir);
 
 	if (path[0] == '/')
-		dir = dir_open_root ();
-	else
 	{
-		dir = dir_reopen (thread_current ()->working_dir);
+		dir_close(dir);
+		dir = dir_open_root();
 	}
-		
-
-	// 아이노드가 어떤 이유로 제거되었거나 디렉터리가 아닌 경우
-	if (!inode_is_dir (dir_get_inode (dir)))
+	
+	if (!inode_is_dir (dir_get_inode (dir)))  // To prevent error cases such as dir-rm-cwd
 		return NULL;
-	char *token, *next_token, *save_ptr;
 
-	token = strtok_r (path, "/", &save_ptr);
-	next_token = strtok_r (NULL, "/", &save_ptr);
-	if (token == NULL)
+	char *ptr;
+	char *remainder;
+	if (!(ptr = strtok_r (path, "/", &remainder)))
 	{
-		strlcpy (file_name, ".", PATH_MAX_LEN);
+		strlcpy(af_path, ".", PATH_MAX_LEN); // ptr is pointing to nothing
 		return dir;
 	}
-	
-	while (token && next_token)
+
+	char *next_ptr = strtok_r(NULL, "/", &remainder);
+	while (ptr != NULL && next_ptr != NULL)
 	{
 		struct inode *inode = NULL;
-		if (!dir_lookup (dir, token, &inode))
+		if (!valid_path (dir, ptr, &inode)) // check whether the inode is in dir and it is directory
 		{
-			dir_close (dir);
+			dir_close(dir);
 			return NULL;
 		}
-		if (!inode_is_dir (inode))
-		{
-			dir_close (dir);
+		if (inode == NULL)
 			return NULL;
-		}
+		dir_close(dir);
+		dir = dir_open(inode);
 
-		dir_close (dir);
-		// if (inode_is_sym (inode))
-		// {
-		// 	printf("I am sym inode!\n");
-		// 	dir = get_dir_from_sym(inode);
-		// }
-		dir = dir_open (inode);
-		
-	
-		token = next_token;
-		next_token = strtok_r (NULL, "/", &save_ptr);
+		ptr = next_ptr;	// Check next path if it exists (at least one '/' exist)
+		next_ptr = strtok_r(NULL, "/", &remainder);
+
 	}
-	if (strlen(token) == PATH_MAX_LEN + 1)
+	if (strlen(ptr) == PATH_MAX_LEN + 1)  // Error if the filename is too long
 		return NULL;
-	strlcpy (file_name, token, PATH_MAX_LEN);
+	strlcpy (af_path, ptr, PATH_MAX_LEN);
 	return dir;
 }
+
 
 struct dir *parse_sympath (const char *sympath, char *parsed_path)
 {
@@ -412,7 +421,6 @@ bool filesys_symlink (const char *target, const char *linkpath) {
 			return false;
 		set_sym_inode(temp_inode);
 	}
-	// printf("filesys_open dir close\n");
 	disk_sector_t sector = inode_get_inumber(temp_inode);
 	inode_close(temp_inode);
 	char symlink[PATH_MAX_LEN + 1];

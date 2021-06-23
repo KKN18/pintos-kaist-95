@@ -116,13 +116,15 @@ dir_lookup (const struct dir *dir, const char *name,
 	ASSERT (name != NULL);
 
 	// Wookayin
-	if(strcmp(name, ".") == 0) 
+	if(strcmp(name, ".") == 0) 	// Given name is current directory
 	{
 		*inode = inode_reopen(dir->inode);
 	}
-	else if (strcmp(name, "..") == 0)
+	else if (strcmp(name, "..") == 0)	// Given name is parent directory
 	{
-		inode_read_at(dir->inode, &e, sizeof e, 0);
+		// Like in lookup function, we can read first offset of inode using inode_read_at function
+
+		inode_read_at(dir->inode, &e, sizeof e, 0);  
 		*inode = inode_open(e.inode_sector);
 	}
 	else if (lookup (dir, name, &e, NULL))

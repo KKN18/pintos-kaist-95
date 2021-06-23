@@ -4,7 +4,7 @@ Kernel command line: -q -f put symlink-link put tar run symlink-link
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  208,281,600 loops/s.
+Calibrating timer...  150,732,800 loops/s.
 hd0:0: detected 377 sector (188 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 4,032 sector (1 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 227 sector (113 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -45,8 +45,8 @@ Executing 'symlink-link':
 (symlink-link) end
 symlink-link: exit(0)
 Execution of 'symlink-link' complete.
-Timer: 117 ticks
-Thread: 32 idle ticks, 52 kernel ticks, 33 user ticks
+Timer: 120 ticks
+Thread: 51 idle ticks, 47 kernel ticks, 22 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 1039 reads, 854 writes
 hd1:0: 227 reads, 0 writes

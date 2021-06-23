@@ -4,7 +4,7 @@ Kernel command line: -q -f put create-normal run create-normal
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  208,896,000 loops/s.
+Calibrating timer...  144,793,600 loops/s.
 hd0:0: detected 377 sector (188 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 103 sector (51 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -26,8 +26,8 @@ Executing 'create-normal':
 (create-normal) end
 create-normal: exit(0)
 Execution of 'create-normal' complete.
-Timer: 68 ticks
-Thread: 30 idle ticks, 36 kernel ticks, 2 user ticks
+Timer: 85 ticks
+Thread: 41 idle ticks, 41 kernel ticks, 4 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 324 reads, 535 writes
 hd1:0: 103 reads, 0 writes

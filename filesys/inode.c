@@ -74,22 +74,17 @@ byte_to_sector (const struct inode *inode, off_t pos) {
 	disk_sector_t start = inode->data.start;
 	cluster_t temp = (cluster_t) start;
 
-	//printf("	temp: %d\n", temp);
-
 	int cnt = pos / DISK_SECTOR_SIZE;
 
 	if (pos >= inode->data.length)
 	{
-		// printf("pos %d length %d\n", pos, inode->data.length);
 		lock_release(&inode->fat_lock);
 		return -1;
 	}
 	while(cnt--)
 	{
-		//printf("temp = %d\n", temp);
 		temp = fat_get(temp);
 	}
-	// printf("read sector_idx %d\n", temp);
 	lock_release(&inode->fat_lock);
 
 	return cluster_to_sector(temp);
@@ -603,8 +598,7 @@ inode_length (const struct inode *inode) {
 	return inode->data.length;
 }
 
-/* RYU */
-// Return true if this inode is a directory, otherwise, return false.
+
 bool
 inode_is_dir (const struct inode *inode)
 {
@@ -613,14 +607,13 @@ inode_is_dir (const struct inode *inode)
 		printf("inode_is_dir\n");
 	}
 	struct inode_disk inode_disk;
-	if (inode->removed)
+	if (inode->removed)		// To prevent error such as dir-rm-cwd test case
 		return false;
 	return inode->data.is_dir;
 }
-// WOOKAYIN
-/* Returns whether the file is removed or not. */
+
 bool
-inode_is_removed (const struct inode *inode)
+inode_is_removed (struct inode *inode)
 {
    return inode->removed;
 }

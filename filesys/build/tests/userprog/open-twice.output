@@ -28,8 +28,8 @@ Executing 'open-twice':
 (open-twice) end
 open-twice: exit(0)
 Execution of 'open-twice' complete.
-Timer: 86 ticks
-Thread: 47 idle ticks, 38 kernel ticks, 2 user ticks
+Timer: 77 ticks
+Thread: 40 idle ticks, 35 kernel ticks, 2 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 347 reads, 538 writes
 hd1:0: 105 reads, 0 writes

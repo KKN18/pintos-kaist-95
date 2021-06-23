@@ -26,38 +26,38 @@ Executing 'page-merge-mm':
 (page-merge-mm) init
 (page-merge-mm) sort chunk 0
 (page-merge-mm) sort chunk 1
-child-qsort-mm: exit(80)
 (page-merge-mm) sort chunk 2
 child-qsort-mm: exit(80)
-(page-merge-mm) sort chunk 3
 child-qsort-mm: exit(80)
+(page-merge-mm) sort chunk 3
 (page-merge-mm) sort chunk 4
+child-qsort-mm: exit(80)
 (page-merge-mm) sort chunk 5
 child-qsort-mm: exit(80)
 child-qsort-mm: exit(80)
 (page-merge-mm) sort chunk 6
-child-qsort-mm: exit(80)
 (page-merge-mm) sort chunk 7
+child-qsort-mm: exit(80)
+child-qsort-mm: exit(80)
 (page-merge-mm) wait for child 0
 (page-merge-mm) wait for child 1
-child-qsort-mm: exit(80)
 (page-merge-mm) wait for child 2
 (page-merge-mm) wait for child 3
 (page-merge-mm) wait for child 4
 (page-merge-mm) wait for child 5
-child-qsort-mm: exit(80)
 (page-merge-mm) wait for child 6
 (page-merge-mm) wait for child 7
+child-qsort-mm: exit(80)
 (page-merge-mm) merge
 (page-merge-mm) verify
 (page-merge-mm) success, buf_idx=1,048,576
 (page-merge-mm) end
 page-merge-mm: exit(0)
 Execution of 'page-merge-mm' complete.
-Timer: 480 ticks
-Thread: 54 idle ticks, 73 kernel ticks, 353 user ticks
+Timer: 548 ticks
+Thread: 86 idle ticks, 78 kernel ticks, 384 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 5253 reads, 6957 writes
+hd0:1: 5250 reads, 6954 writes
 hd1:0: 224 reads, 0 writes
 hd1:1: 0 reads, 0 writes
 Console: 2060 characters output

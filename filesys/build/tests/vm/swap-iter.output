@@ -4,7 +4,7 @@ Kernel command line: -q -f put swap-iter put large.txt run swap-iter
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x9e0000 (Usable: 9,088 kB)
-Calibrating timer...  157,900,800 loops/s.
+Calibrating timer...  209,510,400 loops/s.
 hd0:0: detected 377 sector (188 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 7,932 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -48,13 +48,13 @@ Executing 'swap-iter':
 (swap-iter) end
 swap-iter: exit(0)
 Execution of 'swap-iter' complete.
-Timer: 3786 ticks
-Thread: 912 idle ticks, 398 kernel ticks, 2477 user ticks
+Timer: 4620 ticks
+Thread: 1841 idle ticks, 406 kernel ticks, 2373 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 12082 reads, 16192 writes
 hd1:0: 7932 reads, 0 writes
 hd1:1: 44304 reads, 79536 writes
-Console: 2127 characters output
+Console: 2128 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...
