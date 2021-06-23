@@ -322,7 +322,7 @@ void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset)
 // RYU
 bool chdir (const char *dirname) 
 {
-   struct dir *dir = dir_open_path (dirname);
+   struct dir *dir = get_directory (dirname);
    if(dir == NULL) {
       return false;
    }

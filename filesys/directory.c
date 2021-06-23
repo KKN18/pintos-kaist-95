@@ -115,19 +115,18 @@ dir_lookup (const struct dir *dir, const char *name,
 	ASSERT (dir != NULL);
 	ASSERT (name != NULL);
 
-	// Wookayin
 	if(strcmp(name, ".") == 0) 	// Given name is current directory
 	{
 		*inode = inode_reopen(dir->inode);
 	}
 	else if (strcmp(name, "..") == 0)	// Given name is parent directory
 	{
-		// Like in lookup function, we can read first offset of inode using inode_read_at function
-
-		inode_read_at(dir->inode, &e, sizeof e, 0);  
+		// Like in lookup function, we can read second offset of inode using inode_read_at function
+		// We add parent directory information in the second offset at filesys_create()
+		inode_read_at(dir->inode, &e, sizeof e, sizeof e);  
 		*inode = inode_open(e.inode_sector);
 	}
-	else if (lookup (dir, name, &e, NULL))
+	else if (lookup (dir, name, &e, NULL))	// Neither self dir nor parent dir
 		*inode = inode_open (e.inode_sector);
 	else
 		*inode = NULL;
@@ -158,19 +157,6 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector, bool is_
 	/* Check that NAME is not in use. */
 	if (lookup (dir, name, NULL, NULL))
 		goto done;
-
-	if(is_dir)
-	{
-		/* e is a parent-directory-entry here */
-		struct dir *child_dir = dir_open( inode_open(inode_sector) );
-		if(child_dir == NULL) goto done;
-		e.inode_sector = inode_get_inumber( dir_get_inode(dir) );
-		if (inode_write_at(child_dir->inode, &e, sizeof e, 0) != sizeof e) {
-			dir_close (child_dir);
-			goto done;
-	}
-	dir_close (child_dir);
-	}
 
 	/* Set OFS to offset of free slot.
 	 * If there are no free slots, then it will be set to the
@@ -206,9 +192,11 @@ dir_remove (struct dir *dir, const char *name) {
 	ASSERT (dir != NULL);
 	ASSERT (name != NULL);
 
-	// RYU
-	if (!strcmp (name, ".") || !strcmp (name, ".."))
+	if (!strcmp (name, "."))	// Cannot remove self directory
     	return false;
+
+	if (!strcmp (name, ".."))	// Cannot remove parent directory
+		return false;
 
 	/* Find directory entry. */
 	if (!lookup (dir, name, &e, &ofs))
@@ -219,14 +207,20 @@ dir_remove (struct dir *dir, const char *name) {
 	if (inode == NULL)
 		goto done;
 
-	// WOOKAYIN
-	// Don't erase non-empty directory
+	// Cannot remove nonempty directory
 	if (inode_is_dir (inode)) {
-		// target : the directory to be removed. (dir : the base directory)
-		struct dir *target = dir_open (inode);
-		bool is_empty = dir_is_empty (target);
-		dir_close (target);
-		if (!is_empty) goto done; // can't delete
+		struct dir *inode_dir = dir_open (inode);
+		if (!dir_is_empty (inode_dir))
+		{
+			dir_close (inode_dir);
+			goto done;
+		}
+		dir_close (inode_dir);
+
+
+		// bool is_empty = dir_is_empty (target);
+		// dir_close (target);
+		// if (!is_empty) goto done; // can't delete
   	}
 
 	/* Erase directory entry. */
@@ -251,154 +245,52 @@ bool
 dir_readdir (struct dir *dir, char name[NAME_MAX + 1]) {
 	struct dir_entry e;
 
-	if(dir_is_empty(dir))
+	if(dir_is_empty(dir))	// Directory contains no entries
 		return false;
 
-	if(dir->pos == 0)
-		dir->pos += 2 * sizeof e;
+	if(dir->pos == 0)	
+		dir->pos += 2 * sizeof e;	// Initially self, parent directory exist
 	
 	while (inode_read_at (dir->inode, &e, sizeof e, dir->pos) == sizeof e) {
 		//printf("pos %d\n", dir->pos);
 		dir->pos += sizeof e;
-		if (e.in_use) {
-			//printf("name %s\n", e.name);
-			strlcpy (name, e.name, NAME_MAX + 1);
+		if (e.in_use) {	// Found valid entry
+			strlcpy (name, e.name, NAME_MAX + 1);	// Copy entry's name
 			return true;
 		}
 		//printf("here\n");
 	}
 	//printf("READDIR END\n");
-	return false;
+	return false;	// No entries in used
 }
 
-// WOOKAYIN
-/* Returns whether the DIR is empty. */
 bool
-dir_is_empty (const struct dir *dir)
+dir_is_empty (struct dir *dir)
 {
 	struct dir_entry e;
-	off_t ofs;
+	size_t ofs;
 
-	for (ofs = 2 * sizeof e; /* 0-2*pos is for parent directory */
-		inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
+	for (ofs = 2 * sizeof e; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 		ofs += sizeof e)
 	{
-		if (e.in_use)
+		if (e.in_use)	// Used entry exists
 			return false;
 	}
 	return true;
 }
 
-//WOOKAYIN
-struct dir *
-dir_open_path (const char *path)
+struct dir *get_directory(const char *dirname)
 {
-	char *last;
-	char *token;
-	char *path_copy;
-	struct dir *dir = NULL;
-	struct inode *inode = NULL;
-
-	path_copy = calloc(strlen(path)+1, sizeof(char));
+	char buffer[PATH_MAX_LEN + 1];
+	struct dir *dir = parse_path(dirname, buffer);
 	
-	if(path_copy == NULL)
-	{
-		PANIC("Fail malloc");
-	}
-
-	strlcpy(path_copy, path, strlen(path) + 1);
-
-	if(path[0] == '/') {
-		dir = dir_open_root();
-	}
-	else {
-		struct thread *t = thread_current();
-		if (t->working_dir == NULL)
-			dir = dir_open_root();
-		else {
-			dir = dir_reopen( t->working_dir );
-		}
-	}
-
-	token = strtok_r(path_copy, "/", &last);
-	while(token != NULL) {
-		if(!dir_lookup(dir, token, &inode)) {
-			dir_close(dir);
-			return NULL; // such directory not exist
-		}
-
-		struct dir *next = dir_open(inode);
-		if(next == NULL) {
-			dir_close(dir);
-			return NULL;
-		}
-
-		dir_close(dir);
-		dir = next;
-
-		token = strtok_r(NULL, "/", &last);
-	}
-
-	if (inode_is_removed (dir_get_inode(dir))) {
-		dir_close(dir);
+	struct inode *inode;
+	if (!dir_lookup(dir, buffer, &inode))
 		return NULL;
-	}
-
-	free(path_copy);
-
+	dir_close(dir);
+	if (inode_is_dir(inode))
+		dir = dir_open(inode);
 	return dir;
-}
-
-/* Opens the directory for given path. */
-static struct dir *
-_dir_open_path (const char *path)
-{
-   // copy of path, to tokenize
-   int l = strlen(path);
-   char s[l + 1];
-   strlcpy(s, path, l + 1);
-
-   // relative path handling
-   struct dir *curr;
-   if(path[0] == '/') { // absolute path
-      curr = dir_open_root();
-   }
-   else { // relative path
-      struct thread *t = thread_current();
-      if (t->working_dir == NULL) // may happen for non-process threads (e.g. main)
-         curr = dir_open_root();
-      else {
-         curr = dir_reopen( t->working_dir );
-      }
-   }
-
-   // tokenize, and traverse the tree
-   char *token, *p;
-   for (token = strtok_r(s, "/", &p); token != NULL;
-      token = strtok_r(NULL, "/", &p))
-   {
-      struct inode *inode = NULL;
-      if(! dir_lookup(curr, token, &inode)) {
-         dir_close(curr);
-         return NULL; // such directory not exist
-      }
-
-      struct dir *next = dir_open(inode);
-      if(next == NULL) {
-         dir_close(curr);
-         return NULL;
-      }
-      dir_close(curr);
-      curr = next;
-   }
-
-   // prevent from opening removed directories
-   if (inode_is_removed (dir_get_inode(curr))) {
-      dir_close(curr);
-      return NULL;
-   }
-
-   return curr;
 }
 
 struct dir *get_dir_from_sym (struct inode *sym_inode)

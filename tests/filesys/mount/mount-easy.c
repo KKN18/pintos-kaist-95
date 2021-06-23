@@ -5,6 +5,7 @@
 void
 test_main (void) 
 {
+  ASSERT(0);
   CHECK (mkdir ("/a"), "mkdir \"/a\"");
   CHECK (mount ("a", 1, 0) == 0, "mount the second disk at \"/a\"");
   CHECK (chdir ("a"), "chdir \"/a\"");
