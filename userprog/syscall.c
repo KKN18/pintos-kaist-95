@@ -318,14 +318,11 @@ void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset)
    return res;
 }
 
-/* System calls for Project #4 */ 
-// RYU
 bool chdir (const char *dirname) 
 {
    struct dir *dir = get_directory (dirname);
-   if(dir == NULL) {
+   if(dir == NULL)
       return false;
-   }
    lock_acquire(&file_access);
    dir_close (thread_current()->working_dir);
    thread_current()->working_dir = dir;
