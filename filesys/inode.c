@@ -309,7 +309,6 @@ inode_close (struct inode *inode) {
 		}
 		free (inode);
 		// printf("free inode\n");
-		
 	}
 	// printf("finish inode close\n");
 }

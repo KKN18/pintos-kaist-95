@@ -1,3 +1,4 @@
+pass tests/filesys/extended/symlink-link-persistence
 pass tests/threads/alarm-single
 pass tests/threads/alarm-multiple
 pass tests/threads/alarm-simultaneous
@@ -165,7 +166,7 @@ pass tests/vm/swap-file
 pass tests/vm/swap-anon
 pass tests/vm/swap-iter
 pass tests/vm/swap-fork
-FAIL tests/filesys/buffer-cache/bc-easy
+pass tests/filesys/buffer-cache/bc-easy
 pass tests/filesys/extended/dir-empty-name-persistence
 pass tests/filesys/extended/dir-mk-tree-persistence
 pass tests/filesys/extended/dir-mkdir-persistence
@@ -189,7 +190,7 @@ pass tests/filesys/extended/grow-sparse-persistence
 pass tests/filesys/extended/grow-tell-persistence
 pass tests/filesys/extended/grow-two-files-persistence
 pass tests/filesys/extended/syn-rw-persistence
-FAIL tests/filesys/extended/symlink-file-persistence
-FAIL tests/filesys/extended/symlink-dir-persistence
-FAIL tests/filesys/extended/symlink-link-persistence
-7 of 194 tests failed.
+pass tests/filesys/extended/symlink-file-persistence
+pass tests/filesys/extended/symlink-dir-persistence
+pass tests/filesys/extended/symlink-link-persistence
+3 of 194 tests failed.
