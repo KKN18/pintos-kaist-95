@@ -10,7 +10,7 @@
 #define ROOT_DIR_SECTOR 1       /* Root directory file inode sector. */
 
 // RYU
-#define PATH_MAX_LEN 20
+#define PATH_MAX_LEN 100
 
 /* Disk used for file system. */
 extern struct disk *filesys_disk;

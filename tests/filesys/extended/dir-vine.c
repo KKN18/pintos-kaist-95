@@ -17,7 +17,6 @@ void
 test_main (void) 
 {
   int i;
-  ASSERT(0);
   msg ("creating many levels of files and directories...");
   quiet = true;
   CHECK (mkdir ("start"), "mkdir \"start\"");
@@ -80,7 +79,7 @@ test_main (void)
       CHECK (chdir (".."), "chdir \"..\"");
       // Problematic instruction below
       // ASSERT(0);
-      remove (dir_name);
+
       // ASSERT(0);
       CHECK (remove (dir_name), "remove \"%s\"", dir_name);
       // ASSERT(0);
