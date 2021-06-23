@@ -31,7 +31,7 @@ page_cache_init (void) {
 	lock_init(&page_cache_lock);
 	clock_ptr = 0;
 
-	for(int i = 0; i < BUFFER_CACHE_SIZE; i++)
+	for(int i = 0; i < PAGE_CACHE_SIZE; i++)
 	{
 		cache[i].loaded = false;
 	}
@@ -102,7 +102,7 @@ page_cache_close (void)
 
 	lock_acquire (&page_cache_lock);
 
-	for (int i = 0; i < BUFFER_CACHE_SIZE; ++ i)
+	for (int i = 0; i < PAGE_CACHE_SIZE; i++)
 	{
 		page_cache_writeback(&(cache[i]));
 	}
@@ -119,7 +119,7 @@ page_cache_lookup (disk_sector_t sec_no)
 		printf("pagecache init\n");
 	}
 
-	for (int i = 0; i < BUFFER_CACHE_SIZE; i++)
+	for (int i = 0; i < PAGE_CACHE_SIZE; i++)
 	{
 		if (cache[i].loaded == false) 
 			continue;
@@ -133,7 +133,7 @@ page_cache_lookup (disk_sector_t sec_no)
 static struct page_cache_entry *
 page_cache_get_empty_entry (void) {
 	
-	for (int i = 0; i < BUFFER_CACHE_SIZE; i++)
+	for (int i = 0; i < PAGE_CACHE_SIZE; i++)
 	{
 		if (cache[i].loaded == false) 
 			return &(cache[i]);
@@ -163,11 +163,11 @@ page_cache_evict (void)
 		else
 			break;
 
-		if(clock_ptr >= (BUFFER_CACHE_SIZE - 1))
-			clock_ptr -= (BUFFER_CACHE_SIZE - 1);
+		if(clock_ptr >= (PAGE_CACHE_SIZE - 1))
+			clock_ptr -= (PAGE_CACHE_SIZE - 1);
 		else clock_ptr++;
 
-		if(i > 10 * BUFFER_CACHE_SIZE)
+		if(i > 10 * PAGE_CACHE_SIZE)
 			PANIC("Eviction may have caused infinite loop");
 	}
 

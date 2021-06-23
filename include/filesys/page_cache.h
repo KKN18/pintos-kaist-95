@@ -7,7 +7,7 @@
 #include "filesys/filesys.h"
 
 /* Our Implementation */
-#define BUFFER_CACHE_SIZE 64
+#define PAGE_CACHE_SIZE 64
 #define SECTOR_PER_PAGE 8
 /* END */
 
