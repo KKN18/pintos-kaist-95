@@ -15,11 +15,13 @@ struct page;
 enum vm_type;
 
 static struct lock page_cache_lock;
+static int page_cache_count;
+static int clock_ptr;
 
 struct page_cache_entry {
-    bool occupied;
+    bool loaded;
     bool dirty;
-    bool access;
+    bool flag;
     disk_sector_t sec_no;
     uint8_t buffer[DISK_SECTOR_SIZE];
 };
