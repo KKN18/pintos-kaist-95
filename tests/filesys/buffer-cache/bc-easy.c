@@ -10,7 +10,6 @@ static char buf[TEST_SIZE];
 
 void
 test_main (void) {
-  ASSERT(0);
   int fd;
   char c;
   long long read_cnt, write_cnt;

@@ -74,7 +74,7 @@ vm_init (void) {
 	vm_file_init ();
 	
 #ifdef EFILESYS  /* For project 4 */
-	pagecache_init ();
+	// pagecache_init ();
 #endif
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */

@@ -10,6 +10,7 @@
 /* Our Implementation */
 #include "threads/thread.h"
 #include "filesys/fat.h"
+#include "filesys/page_cache.h"
 
 #define LOG 0
 
@@ -36,7 +37,7 @@ filesys_init (bool format) {
 
 #ifdef EFILESYS
 	fat_init ();
-
+	page_cache_init();
 	if (format)
 		do_format ();
 
@@ -67,6 +68,7 @@ filesys_done (void) {
 #ifdef EFILESYS
 	inode_all_remove();
 	fat_close ();
+	page_cache_close();
 #else
 	free_map_close ();
 #endif
