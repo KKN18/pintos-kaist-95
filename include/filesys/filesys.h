@@ -22,7 +22,7 @@ struct file *filesys_open (const char *name);
 bool filesys_remove (const char *name);
 /* Our Implementation */
 // RYU
-struct dir *parse_path (const char *, char *);
+struct dir *get_dir_and_filename (const char *, char *);
 
 struct sym_link {
     char linkpath[PATH_MAX_LEN];

@@ -277,7 +277,7 @@ dir_is_empty (struct dir *dir)
 struct dir *get_directory(const char *dirname)
 {
 	char buffer[PATH_MAX_LEN + 1];
-	struct dir *dir = parse_path(dirname, buffer);
+	struct dir *dir = get_dir_and_filename(dirname, buffer);
 	
 	struct inode *inode;
 	if (!dir_lookup(dir, buffer, &inode))

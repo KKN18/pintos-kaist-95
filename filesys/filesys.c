@@ -86,7 +86,7 @@ filesys_create (const char *name, off_t initial_size, bool is_dir) {
 	disk_sector_t inode_sector = 0;
 	
 	char parsed_path[PATH_MAX_LEN + 1];
-	struct dir *dir = parse_path(name, parsed_path);	// Parse name and get file name to parsed_path
+	struct dir *dir = get_dir_and_filename(name, parsed_path);	// Parse name and get file name to parsed_path
 	if (dir == NULL)
 		return false;
 	
@@ -165,7 +165,7 @@ struct file * filesys_open (const char *name) {
 	}
 	// printf("original path: %s\n", path);
 	char parsed_path[PATH_MAX_LEN + 1];
-	struct dir *dir = parse_path (name, parsed_path);
+	struct dir *dir = get_dir_and_filename (name, parsed_path);
 	if (dir == NULL)
 		return NULL;
 
@@ -195,7 +195,7 @@ bool filesys_remove (const char *name) {
 		printf("filesys_remove: %s\n", name);	
 	}
 	char parsed_path[PATH_MAX_LEN + 1];
-	struct dir *dir = parse_path (name, parsed_path);
+	struct dir *dir = get_dir_and_filename (name, parsed_path);
 	if (dir == NULL)
 		return false;
 	struct inode *inode;
@@ -331,11 +331,11 @@ bool valid_path (struct dir *dir, char *name, struct inode **inode)
 	return true;
 }
 
-struct dir * parse_path (const char *bf_path, char *af_path)
+struct dir * get_dir_and_filename (const char *bf_path, char *af_path)
 {
 	if(LOG)
 	{
-		printf("parse_path\n");	
+		printf("get_dir_and_filename\n");	
 	}
 	if (bf_path == NULL || strlen(bf_path) == 0)
 		return NULL;
@@ -416,7 +416,7 @@ struct dir *parse_sympath (const char *sympath, char *parsed_path)
 bool filesys_symlink (const char *target, const char *linkpath) {
 	char name[PATH_MAX_LEN + 1];
 
-	struct dir *dir = parse_path (target, name);
+	struct dir *dir = get_dir_and_filename (target, name);
 	ASSERT(dir != NULL);
 
 	struct inode *temp_inode = NULL;
