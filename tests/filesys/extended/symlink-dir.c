@@ -54,6 +54,5 @@ test_main (void)
 
 	msg ("close \"file\"");
 	close (fd);
-
 	check_file ("a/b/file", buf_a, FILE_SIZE);
 }

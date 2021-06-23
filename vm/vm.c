@@ -72,8 +72,9 @@ void
 vm_init (void) {
 	vm_anon_init ();
 	vm_file_init ();
+	
 #ifdef EFILESYS  /* For project 4 */
-	pagecache_init ();
+	// pagecache_init ();
 #endif
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
@@ -326,6 +327,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* Page fault is TRUE page fault */
   	if (addr == NULL || !not_present || !is_user_vaddr(addr))
 	{
+		// ASSERT(0);
 		exit(-1);
 	}
 
@@ -348,6 +350,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 				return true;
 			}
 		}
+		// ASSERT(0);
 		exit(-1);
 	}
 	

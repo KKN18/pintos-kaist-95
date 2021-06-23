@@ -325,7 +325,6 @@ void
 process_exit (void) {
 	if(LOG)
 		printf("process_exit: %s\n", thread_name());
-
 	struct thread *curr = thread_current ();
 	
 	/* TODO: Your code goes here.
@@ -355,11 +354,24 @@ process_exit (void) {
 		else e = list_next(e);
 	}
 
-	/* RYU */
-	dir_close(curr->working_dir);
+	// struct list_elem *s = list_begin(&curr->sym_list);
 
+	// for (s; s != list_end(&curr->sym_list);)
+	// {
+	// 	struct sym_link *sym_link = list_entry (s, struct sym_link, sym_elem);
+	// 	if (!filesys_symlink(sym_link->path, sym_link->linkpath))
+	// 		PANIC("filesys_symlink fail");
+	// 	s = list_remove(s);
+	// }
+
+	/* RYU */
+	//ASSERT(0);
+	// printf("%%%%%%%%%%%%%%%%\n");
+	// printf("Close working dir\n");
+	//dir_close(curr->working_dir);
 	curr->fd = 2;
 	// ASSERT(file_deny_cnt(curr->prog_file) != 0);
+	// printf("Close prog_file\n");
 	file_close(curr->prog_file);
 	process_cleanup ();
 }

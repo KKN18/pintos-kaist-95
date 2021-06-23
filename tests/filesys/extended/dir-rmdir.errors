@@ -1,0 +1,8 @@
+
+Command 'pintos' not found, did you mean:
+
+  command 'pinto' from deb pinto
+  command 'pintod' from deb pinto
+
+Try: apt install <deb name>
+

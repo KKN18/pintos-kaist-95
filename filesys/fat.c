@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define LOG 0
+
 /* Should be less than DISK_SECTOR_SIZE */
 struct fat_boot {
 	unsigned int magic;
@@ -33,6 +35,10 @@ void fat_fs_init (void);
 
 void
 fat_init (void) {
+	if(LOG)
+	{
+		printf("fat_init\n");	
+	}
 	fat_fs = calloc (1, sizeof (struct fat_fs));
 	if (fat_fs == NULL)
 		PANIC ("FAT init failed");
@@ -53,6 +59,10 @@ fat_init (void) {
 
 void
 fat_open (void) {
+	if(LOG)
+	{
+		printf("fat_open\n");	
+	}
 	fat_fs->fat = calloc (fat_fs->fat_length, sizeof (cluster_t));
 	if (fat_fs->fat == NULL)
 		PANIC ("FAT load failed");
@@ -82,6 +92,10 @@ fat_open (void) {
 
 void
 fat_close (void) {
+	if(LOG)
+	{
+		printf("fat_close\n");	
+	}
 	// Write FAT boot sector
 	uint8_t *bounce = calloc (1, DISK_SECTOR_SIZE);
 	if (bounce == NULL)
@@ -115,6 +129,10 @@ fat_close (void) {
 
 void
 fat_create (void) {
+	if(LOG)
+	{
+		printf("\nfat_create\n");	
+	}
 	// Create FAT boot
 	fat_boot_create ();
 	fat_fs_init ();
@@ -125,7 +143,7 @@ fat_create (void) {
 		PANIC ("FAT creation failed");
 
 	// Set up ROOT_DIR_CLST
-	fat_put (ROOT_DIR_CLUSTER, EOChain);
+	// fat_put (ROOT_DIR_CLUSTER, EOChain);
 
 	// Fill up ROOT_DIR_CLUSTER region with 0
 	uint8_t *buf = calloc (1, DISK_SECTOR_SIZE);
@@ -137,6 +155,10 @@ fat_create (void) {
 
 void
 fat_boot_create (void) {
+	if(LOG)
+	{
+		printf("fat_boot_create\n");
+	}
 	unsigned int fat_sectors =
 	    (disk_size (filesys_disk) - 1)
 	    / (DISK_SECTOR_SIZE / sizeof (cluster_t) * SECTORS_PER_CLUSTER + 1) + 1;
@@ -152,37 +174,63 @@ fat_boot_create (void) {
 
 void
 fat_fs_init (void) {
+	if(LOG)
+	{
+		printf("fat_fs_init\n");	
+	}
 	/* TODO: Your code goes here. */
 	struct fat_boot *bs = &fat_fs->bs;
-	fat_fs->fat_length = bs->fat_sectors / bs->sectors_per_cluster;
-	fat_fs->data_start = bs->fat_start + fat_fs->fat_length;
+	printf("fat sectors : %d\n",bs->fat_sectors);
+	fat_fs->fat_length = bs->total_sectors - bs->fat_sectors;
+   	printf("fat_start: %d, fat_sectors: %d, fat_length: %d\n", bs->fat_start, bs->fat_sectors, fat_fs->fat_length);
+	fat_fs->data_start = bs->fat_start + (bs->fat_sectors / bs->sectors_per_cluster) + 1;
+	printf("data_start: %d\n", fat_fs->data_start);
+	printf("capacity: %d\n", disk_size(filesys_disk));
 }
 
 /*----------------------------------------------------------------------------*/
 /* FAT handling                                                               */
 /*----------------------------------------------------------------------------*/
 
+void fat_print() {
+   unsigned int *fat = fat_fs->fat;
+   printf("\n-----------fat print--------------\n");
+   for (size_t i = 1; i < fat_fs->fat_length; i++)
+   {
+      if (fat[i] != 0)
+         printf("fat[%d] = %d\n", i, fat[i]);
+   }
+   printf("\n");
+}
+
 bool
 free_fat_allocate (size_t cnt, disk_sector_t *sectorp) {
-
+	if(LOG)
+	{
+		printf("free_fat_allocate\n");	
+	}
 	ASSERT(cnt == 1);
 
 	unsigned int *fat = fat_fs->fat;
 	bool isFound = false;
-	cluster_t last_index = fat_fs->fat_length - 1;
+	// cluster_t last_index = fat_fs->fat_length - 1;
 	cluster_t free_sector = NULL;
 
-	for(int i = last_index; i >= 1; i--)
+	for(int i = 1; i < fat_fs->fat_length; i++)
 	{
 		if(fat[i] == 0)
 		{
 			isFound = true;
 			free_sector = cluster_to_sector(i);
+			break;
 		}
 	}
 
 	if(isFound == false)
-		PANIC("Fat is full");
+	{
+		// PANIC("Fat is full");
+		return false;
+	}
 
 	if(free_sector != NULL)
 		*sectorp = free_sector;
@@ -190,11 +238,27 @@ free_fat_allocate (size_t cnt, disk_sector_t *sectorp) {
 	return free_sector != NULL;
 }
 
+void
+free_fat_release (disk_sector_t sector, size_t cnt) {
+	if(LOG)
+	{
+		printf("free_fat_release\n");	
+	}
+	ASSERT(cnt == 1);
+
+	fat_remove_chain((cluster_t)sector, 0);
+	return;
+}
+
 /* Add a cluster to the chain.
  * If CLST is 0, start a new chain.
  * Returns 0 if fails to allocate a new cluster. */
 cluster_t
 fat_create_chain (cluster_t clst) {
+	if(LOG)
+	{
+		printf("fat_create_chain\n");	
+	}
 	/* TODO: Your code goes here. */
 	unsigned int *fat = fat_fs->fat;
 	cluster_t cluster = 0;
@@ -215,6 +279,10 @@ fat_create_chain (cluster_t clst) {
  * If PCLST is 0, assume CLST as the start of the chain. */
 void
 fat_remove_chain (cluster_t clst, cluster_t pclst) {
+	if(LOG)
+	{
+		printf("fat_remove_chain\n");	
+	}
 	/* TODO: Your code goes here. */
 	unsigned int *fat = fat_fs->fat;
 	cluster_t cur_clst = clst;
@@ -237,6 +305,10 @@ fat_remove_chain (cluster_t clst, cluster_t pclst) {
 /* Update a value in the FAT table. */
 void
 fat_put (cluster_t clst, cluster_t val) {
+	if(LOG)
+	{
+		printf("fat_put\n");	
+	}
 	/* TODO: Your code goes here. */
 	unsigned int *fat = fat_fs->fat;
 	fat[clst] = val;
@@ -246,6 +318,10 @@ fat_put (cluster_t clst, cluster_t val) {
 /* Fetch a value in the FAT table. */
 cluster_t
 fat_get (cluster_t clst) {
+	if(LOG)
+	{
+		printf("fat_get\n");	
+	}
 	/* TODO: Your code goes here. */
 	unsigned int *fat = fat_fs->fat;
 	return fat[clst];
@@ -254,7 +330,23 @@ fat_get (cluster_t clst) {
 /* Covert a cluster # to a sector number. */
 disk_sector_t
 cluster_to_sector (cluster_t clst) {
+	if(LOG)
+	{
+		printf("cluster_to_sector\n");	
+	}
 	/* TODO: Your code goes here. */
 	struct fat_boot *bs = &fat_fs->bs;
 	return clst * (bs->sectors_per_cluster);
+}
+
+disk_sector_t
+fat_to_data_cluster (cluster_t clst) {
+	if(LOG)
+	{
+		printf("fat_to_data_cluster\n");
+	}
+	
+	disk_sector_t data_start = fat_fs->data_start;
+	// printf("cluster: %d, fat_to_data_cluster result: %d\n", clst, data_start + clst - 1);
+	return data_start + clst - 1;
 }

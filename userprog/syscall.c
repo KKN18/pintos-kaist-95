@@ -14,10 +14,12 @@ void syscall_handler (struct intr_frame *);
 
 /* Our Implementation */
 #include "filesys/inode.h"
+#include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/synch.h"
 #include "vm/file.h"
+#include "filesys/inode.h"
 /* END */
 
 /* System call.
@@ -32,13 +34,6 @@ void syscall_handler (struct intr_frame *);
 #define MSR_STAR 0xc0000081         /* Segment selector msr */
 #define MSR_LSTAR 0xc0000082        /* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
-
-/* Copy file structure */
-struct file {
-   struct inode *inode;        /* File's inode. */
-   off_t pos;                  /* Current position. */
-   bool deny_write;            /* Has file_deny_write() been called? */
-};
 
 syscall_init (void) {
    write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
@@ -159,14 +154,17 @@ bool create(const char *file, unsigned initial_size) {
    if (file == NULL) exit(-1);
    if (strlen(file) == 0) return false;
    lock_acquire(&file_access);
-   bool ret = filesys_create(file, initial_size);
+   bool ret = filesys_create(file, initial_size, false);
    lock_release(&file_access);
    return ret;
 }
 
 bool remove(const char *file) {
    if (file == NULL) return false;
-   return filesys_remove(file);
+   lock_acquire(&file_access);
+   bool ret = filesys_remove(file);
+   lock_release(&file_access);
+   return ret;
 }
 
 int open(const char *file) {
@@ -178,6 +176,14 @@ int open(const char *file) {
       lock_release(&file_access);
       return -1;
    }
+
+   // Wookayin
+   // directory handling
+   struct inode *inode = file_get_inode(f);
+   if(inode != NULL && inode_is_dir(inode)) {
+      f->dir = dir_open( inode_reopen(inode) );
+   }
+
    int fd = allocate_fd(f);
    if (fd == -1)
    {
@@ -233,6 +239,12 @@ read (int fd, void *buffer, unsigned size)
          lock_release(&file_access);
          return -1;
       }
+      // If this is directory, read not allowed.
+      if (inode_is_dir(file->inode))
+      {
+         lock_release(&file_access);
+         return -1;
+      }
       int iRead = file_read(file, buffer, size); // from file.h
       lock_release (&file_access);
       return iRead;
@@ -254,6 +266,11 @@ int write (int fd, const void *buffer, unsigned size)
     {
       lock_release(&file_access);
       return -1;
+    }
+    if (inode_is_dir(file->inode))
+    {
+       lock_release(&file_access);
+       return -1;
     }
     int iWrite = file_write(file, buffer, size); // file.h
     lock_release (&file_access);
@@ -282,25 +299,9 @@ unsigned tell (int fd)
 void close (int fd)
 { 
    lock_acquire(&file_access);
-     delete_file (fd);
+   delete_file (fd);
    lock_release(&file_access);
 }
-
-/*
-int dup2 (int oldfd, int newfd)
-{
-   struct file *oldfile = search_file(oldfd);
-   struct file *newfile = search_file(newfd);
-   if (oldfd < 0 || oldfd >= thread_current()->next_fd)
-      return -1;
-   if (newfile != NULL)
-   {
-      close(newfile);
-   }
-   newfile = oldfile;
-   return newfd;
-}
-*/
 
 void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset) 
 {
@@ -317,35 +318,122 @@ void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset)
    return res;
 }
 
-/* System calls for Project #4 */ 
-bool chdir (const char *dir) 
+bool chdir (const char *dirname) 
 {
+   struct dir *dir = get_directory (dirname);
+   if(dir == NULL)
+      return false;
+   lock_acquire(&file_access);
+   dir_close (thread_current()->working_dir);
+   thread_current()->working_dir = dir;
+   lock_release(&file_access);
    return true;
 }
 
 bool mkdir (const char *dir) 
 {
-   return true;
+   lock_acquire(&file_access);
+   int ret = filesys_create(dir, 0, true);
+   lock_release(&file_access);
+   return ret;
 }
 
-bool readdir (int fd, char name[READDIR_MAX_LEN + 1]) 
+bool readdir (int fd, char *name) 
 {
-   return true;
+   lock_acquire(&file_access);
+   
+   struct file *f = search_file (fd);
+
+   if (f == NULL)
+   {
+      lock_release(&file_access);
+      exit (-1);
+   }
+
+   if (f->dir == NULL)
+   {
+      lock_release(&file_access);
+      return false;
+   }
+
+   bool result = dir_readdir (f->dir, name);
+   
+   lock_release(&file_access);
+   
+   return result;
 }
+
 
 bool isdir (int fd) 
 {
-   return true;
+   lock_acquire(&file_access);
+   
+   struct file *f = search_file(fd);
+
+   if(f == NULL)
+   {
+      lock_release(&file_access);
+      exit(-1);
+   }
+
+   bool result = inode_is_dir(file_get_inode(f));
+
+   lock_release(&file_access);
+   
+   return result;
 }
 
 int inumber (int fd)
 {
-   return true;
+   lock_acquire(&file_access);
+
+   struct file *f = search_file (fd);
+  
+   if(f == NULL)
+   {
+      lock_release(&file_access);
+      exit(-1);
+   }
+
+   lock_release(&file_access);
+   
+   return inode_get_inumber(file_get_inode(f));
 }
 
-int symlink (const char* target, const char* linkpath)
+int symlink (const char *target, const char *linkpath)
 {
-   return true;
+   if (!filesys_symlink(target, linkpath))
+      PANIC("filesys_symlink fail");
+   return 0;
+   
+}
+
+int past_symlink (const char* target, const char* linkpath)
+{
+   struct thread *t = thread_current();
+   struct sym_link *sym = (struct sym_link *)malloc(sizeof(struct sym_link));
+   if (linkpath[0] == '/') linkpath = linkpath + 1;
+   strlcpy(sym->linkpath, linkpath, PATH_MAX_LEN + 1);
+   strlcpy(sym->path, target, PATH_MAX_LEN + 1);
+   list_push_back(&t->sym_list, &sym->sym_elem);
+
+   return 0;
+}
+
+/* Mounts the disk (chan_no:dev_no) to path. 
+See disk/disk.c for the meaning of chan_no and dev_no. 
+On success, zero is returned. On error, -1 is returned. */
+int mount (const char *path, int chan_no, int dev_no)
+{
+   return -1;
+}
+
+/* Unmount the disk that mounted to path. 
+On success, zero is returned. 
+On error, -1 is returned. */
+int umount (const char *path)
+{
+   return -1;
 }
 
 void syscall_print(int n)
@@ -399,6 +487,24 @@ void syscall_print(int n)
          break;
       case SYS_MUNMAP:
          printf("SYS_MUMMAP\n");
+         break;
+      case SYS_CHDIR:
+         printf("SYS_CHDIR\n");
+         break;
+      case SYS_MKDIR:
+         printf("SYS_MKDIR\n");
+         break;
+      case SYS_READDIR:
+         printf("SYS_READDIR\n");
+         break;
+      case SYS_ISDIR:
+         printf("SYS_ISDIR\n");
+         break;
+      case SYS_INUMBER:
+         printf("SYS_INUMBER\n");
+         break;
+      case SYS_SYMLINK:
+         printf("SYS_SYMLINK\n");
          break;
    }
 }
@@ -535,11 +641,19 @@ syscall_handler (struct intr_frame *f) {
          assert_valid_useraddr(f->R.rsi, f->rsp);
          f->R.rax = symlink(f->R.rdi, f->R.rsi);
          break;
-      /*
-      case default:
-         printf("Unknown syscall\n");
+      case SYS_MOUNT:
+         assert_valid_useraddr(f->R.rdi, f->rsp);
+         assert_valid_useraddr(f->R.rsi, f->rsp);
+         assert_valid_useraddr(f->R.rdx, f->rsp);
+         f->R.rax = mount(f->R.rdi, f->R.rsi, f->R.rdx);
          break;
-      */
+      case SYS_UMOUNT:
+         assert_valid_useraddr(f->R.rdi, f->rsp);
+         f->R.rax = umount(f->R.rdi); 
+         break;
+      //case default:
+      //   PANIC("Unknown syscall\n");
+      //   break;
    }
    /* END */
 }
