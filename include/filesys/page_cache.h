@@ -33,9 +33,8 @@ bool page_cache_initializer (struct page *page, enum vm_type type, void *kva);
 
 /* Our Implementation */
 void page_cache_destroy (void);
-
+// Replace disk_read and disk_write
 void page_cache_read (struct disk *d, disk_sector_t sec_no, const void *buffer);
-
 void page_cache_write (struct disk *d, disk_sector_t sec_no, const void *buffer);
 /* END */
 

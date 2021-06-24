@@ -29,14 +29,19 @@ page_cache_init (void) {
 	/* TODO: Create a worker daemon for page cache with page_cache_kworkerd */
 
 	lock_init(&page_cache_lock);
+	
+	// For second-chance algorithm
 	clock_ptr = 0;
+
 	for(int i = 0; i < PAGE_CACHE_SIZE; i++)
 	{
 		page_cache[i].loaded = false;
 	}
+	
 	return;
 }
 
+// NOT USED
 /* Initialize the page cache */
 bool
 page_cache_initializer (struct page *page, enum vm_type type, void *kva) {
@@ -45,17 +50,19 @@ page_cache_initializer (struct page *page, enum vm_type type, void *kva) {
 	return false;
 }
 
+// NOT USED
 /* Utilze the Swap in mechanism to implement readhead */
 static bool
 page_cache_readahead (struct page *page, void *kva) {
 }
 
-
+// NOT USED
 /* Worker thread for page cache */
 static void
 page_cache_kworkerd (void *aux) {
 }
 
+/* Used to set cache entry information */
 static void set_entry 
 (struct page_cache_entry *entry, bool loaded, bool flag,
 bool dirty, disk_sector_t sec_no)
@@ -67,8 +74,9 @@ bool dirty, disk_sector_t sec_no)
 	return;
 }
 
+/* Find page cache entry with certain sec_no */
 static struct page_cache_entry *
-page_cache_lookup (disk_sector_t sec_no) // find page cache entry with certain sec_no
+page_cache_lookup (disk_sector_t sec_no)
 {
 	if(LOG)
 	{
@@ -79,25 +87,39 @@ page_cache_lookup (disk_sector_t sec_no) // find page cache entry with certain s
 	{
 		if (page_cache[i].loaded == false) 	// No entry
 			continue;
-		if (page_cache[i].sec_no == sec_no) { // We found it!
+		
+		if (page_cache[i].sec_no == sec_no) 
+		{
+			// Found it
 			return &(page_cache[i]);
 		}
+
 	}
 	return NULL; // No such entry in cache
 }
 
+/* Find empty entry in page cache */
 static struct page_cache_entry *
 page_cache_get_empty_entry (void) {
+	if(LOG)
+	{
+		printf("pagecache get empty entry\n");
+	}
 	
 	for (int i = 0; i < PAGE_CACHE_SIZE; i++)
 	{
-		if (page_cache[i].loaded == false) // Empty entry, return its pointer
-			return &(page_cache[i]);
+		if (page_cache[i].loaded == false) 
+		{
+			// Encounter empty entry then return its pointer
+			return &(page_cache[i]);	
+		}
 	}
 
 	return NULL;
 }
 
+/* Return avaliable page cache entry. 
+   If page cache is full, evict one. */
 static struct page_cache_entry *
 page_cache_evict (void)
 {
@@ -108,7 +130,8 @@ page_cache_evict (void)
 
 	struct page_cache_entry *victim;
 
-	// Approximate LRU
+	// Eviction Policy:
+	// Approximation of LRU, Second chance algorithm
 	for(int i = 0; ; i++)
 	{
 		if(page_cache[clock_ptr].flag)
@@ -120,19 +143,19 @@ page_cache_evict (void)
 			clock_ptr -= (PAGE_CACHE_SIZE - 1);
 		else clock_ptr++;
 
+		// Prevent possible infinite loop
 		if(i > 10 * PAGE_CACHE_SIZE)
 			PANIC("Eviction may have caused infinite loop");
 	}
 
 	victim = &page_cache[clock_ptr];
-	if (victim->dirty) {
-		page_cache_writeback (victim);
-	}
-
+	page_cache_writeback (victim);
 	victim->loaded = false;
+
 	return victim;
 }
 
+/* disk_read with page cache support */
 void page_cache_read (struct disk *d, disk_sector_t sec_no, const void *buffer)
 {
 	if(LOG)
@@ -165,7 +188,7 @@ void page_cache_read (struct disk *d, disk_sector_t sec_no, const void *buffer)
 	return;
 }
 
-
+/* disk_write with page_cache support */
 void page_cache_write (struct disk *d, disk_sector_t sec_no, const void *buffer)
 {
 	lock_acquire (&page_cache_lock);
@@ -223,6 +246,7 @@ page_cache_writeback (struct page_cache_entry *entry)	// Write cache contents ba
 	if (entry->dirty) {	// If not dirty, don't need to write back to disk because contents are not changed
 		disk_write (filesys_disk, entry->sec_no, entry->buffer);
 	}
+
 	entry->dirty = false;
 	return;
 }
