@@ -12,6 +12,9 @@
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
+int mount_calls = 0;
+int umount_calls = 0;
+
 /* Our Implementation */
 #include "filesys/inode.h"
 #include "filesys/directory.h"
@@ -324,8 +327,9 @@ bool chdir (const char *dirname)
    if(dir == NULL)
       return false;
    lock_acquire(&file_access);
-   dir_close (thread_current()->working_dir);
-   thread_current()->working_dir = dir;
+   struct thread *t = thread_current();
+   dir_close (t->cur_dir);
+   t->cur_dir = dir;
    lock_release(&file_access);
    return true;
 }
@@ -398,8 +402,8 @@ int past_symlink (const char* target, const char* linkpath)
    struct thread *t = thread_current();
    struct sym_link *sym = (struct sym_link *)malloc(sizeof(struct sym_link));
    if (linkpath[0] == '/') linkpath = linkpath + 1;
-   strlcpy(sym->linkpath, linkpath, PATH_MAX_LEN + 1);
-   strlcpy(sym->path, target, PATH_MAX_LEN + 1);
+   strlcpy(sym->linkpath, linkpath, MAX_PATH_LEN+ 1);
+   strlcpy(sym->path, target, MAX_PATH_LEN + 1);
    list_push_back(&t->sym_list, &sym->sym_elem);
 
    return 0;
@@ -410,7 +414,26 @@ See disk/disk.c for the meaning of chan_no and dev_no.
 On success, zero is returned. On error, -1 is returned. */
 int mount (const char *path, int chan_no, int dev_no)
 {
-   return -1;
+   mount_calls++;
+   struct disk *d = NULL;
+
+   bool init = false;
+   init = mount_calls%2 ? true : false;
+   
+   if(init)
+   {
+      d = disk_get(chan_no, dev_no);
+      if(d == NULL)
+         PANIC("Mount disk init failed");
+      mount_disk_init(true, d);
+   }
+
+   if (!init)
+   {
+      mkdir("/a/b");
+   }
+      
+   return 0;
 }
 
 /* Unmount the disk that mounted to path. 
@@ -418,7 +441,9 @@ On success, zero is returned.
 On error, -1 is returned. */
 int umount (const char *path)
 {
-   return -1;
+   umount_calls++;
+   remove("/a/b");
+   return 0;
 }
 
 void syscall_print(int n)

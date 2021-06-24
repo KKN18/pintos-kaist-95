@@ -18,6 +18,7 @@
 struct disk *filesys_disk;
 
 static void do_format (void);
+static void mount_do_format (char *path);
 
 bool is_sym_path (char *path);
 /* Initializes the file system module.
@@ -52,7 +53,38 @@ filesys_init (bool format) {
 	free_map_open ();
 #endif
 
-	thread_current()->working_dir = dir_open_root();
+	thread_current()->cur_dir = dir_open_root();
+}
+
+/* Initializes the file system module.
+ * If FORMAT is true, reformats the file system. */
+void
+mount_disk_init (bool format, char *path) {
+	if(LOG)
+	{
+		printf("filesys_init\n");	
+	}
+
+	// inode_init ();
+
+#ifdef EFILESYS
+	// fat_init ();
+	// page_cache_init();
+	if (format)
+		mount_do_format (path);
+
+	// fat_open ();
+#else
+	/* Original FS */
+	free_map_init ();
+
+	if (format)
+		mount_do_format (path);
+
+	free_map_open ();
+#endif
+
+	// thread_current()->cur_dir = dir_open_root();
 }
 
 /* Shuts down the file system module, writing any unwritten data
@@ -87,7 +119,7 @@ filesys_create (const char *name, off_t initial_size, bool is_dir) {
 	}
 	disk_sector_t inode_sector = 0;
 	
-	char parsed_path[PATH_MAX_LEN + 1];
+	char parsed_path[MAX_PATH_LEN+ 1];
 	struct dir *dir = get_dir_and_filename(name, parsed_path);	// Parse name and get file name to parsed_path
 	if (dir == NULL)
 		return false;
@@ -166,7 +198,7 @@ struct file * filesys_open (const char *name) {
 		printf("filesys_open\n");	
 	}
 	// printf("original path: %s\n", path);
-	char parsed_path[PATH_MAX_LEN + 1];
+	char parsed_path[MAX_PATH_LEN+ 1];
 	struct dir *dir = get_dir_and_filename (name, parsed_path);
 	if (dir == NULL)
 		return NULL;
@@ -196,7 +228,7 @@ bool filesys_remove (const char *name) {
 	{
 		printf("filesys_remove: %s\n", name);	
 	}
-	char parsed_path[PATH_MAX_LEN + 1];
+	char parsed_path[MAX_PATH_LEN+ 1];
 	struct dir *dir = get_dir_and_filename (name, parsed_path);
 	if (dir == NULL)
 		return false;
@@ -215,7 +247,7 @@ bool filesys_remove (const char *name) {
 			dir_close(dir);
 			return false;
 		}
-		char buffer[PATH_MAX_LEN + 1];
+		char buffer[MAX_PATH_LEN+ 1];
 		if (dir_readdir (inode_dir, buffer)) // inode directory should be empty
 		{
 			dir_close(dir);
@@ -267,6 +299,31 @@ do_format (void) {
 	printf ("done.\n");
 }
 
+/* Formats the file system. */
+static void
+mount_do_format (char *path) {
+	if(LOG)
+	{
+		printf("mount_do_format\n");	
+	}
+		
+	char parsed_path[MAX_PATH_LEN+ 1];
+	struct dir *dir = get_dir_and_filename(path, parsed_path);	// Parse name and get file name to parsed_path
+	
+	if (dir == NULL)
+		return false;
+	
+	struct inode *inode;
+
+	printf ("Formatting file system...");
+
+	dir_close (dir);
+
+	printf ("done.\n");
+
+	return;
+}
+
 bool is_sym_path (char *path)
 {
 	struct thread *t = thread_current();
@@ -301,21 +358,21 @@ char *convert_sym_path (char *path)
 	struct list *sym_list = &t->sym_list;
 	struct list_elem *e;
 
-	char converted[PATH_MAX_LEN];
-	strlcpy(converted, path, PATH_MAX_LEN + 1);
+	char converted[MAX_PATH_LEN];
+	strlcpy(converted, path, MAX_PATH_LEN+ 1);
 	for (e = list_begin(sym_list); e != list_end(sym_list); e = list_next(e))
 	{
 		struct sym_link *sym = list_entry(e, struct sym_link, sym_elem);
 		char *ptr = strstr(converted, sym->linkpath);
 		if (ptr == NULL) continue;
 		int link_len = strlen(sym->linkpath);
-		char temp[PATH_MAX_LEN];
+		char temp[MAX_PATH_LEN];
 		strlcpy(temp, ptr + link_len, link_len + 1);
 		strlcpy(ptr, sym->path, strlen(sym->path) + 1);
 		strlcpy(ptr + strlen(sym->path), temp, strlen(temp) + 1);
 		return convert_sym_path(converted);
 	}
-	char *result = (char *)malloc(sizeof(char) * (PATH_MAX_LEN));
+	char *result = (char *)malloc(sizeof(char) * (MAX_PATH_LEN));
 	strlcpy(result, path, strlen(path) + 1);
 	return result;
 }
@@ -343,18 +400,20 @@ struct dir * get_dir_and_filename (const char *bf_path, char *af_path)
 		return NULL;
 
 	struct dir *dir;
+	struct thread *t = thread_current();
+
 	if (bf_path[0] == '/')
 		dir = dir_open_root();
-	else if (thread_current()->working_dir == NULL)
+	else if (t->cur_dir == NULL)
 		dir = dir_open_root();
 	else
-		dir = dir_reopen(thread_current()->working_dir);
+		dir = dir_reopen(t->cur_dir);
 
 
-	// To handle such long filename, initially use more buffer than PATH_MAX_LEN
+	// To handle such long filename, initially use more buffer than MAX_PATH_LEN
 	// We will return error if the path is fully copied later
-	char path[PATH_MAX_LEN + 3];	
-	strlcpy (path, bf_path, PATH_MAX_LEN + 2);
+	char path[MAX_PATH_LEN+ 3];	
+	strlcpy (path, bf_path, MAX_PATH_LEN+ 2);
 
 	if (!inode_is_dir (dir_get_inode (dir)))  // To prevent error cases such as dir-rm-cwd
 		return NULL;
@@ -363,7 +422,7 @@ struct dir * get_dir_and_filename (const char *bf_path, char *af_path)
 	char *remainder;
 	if (!(ptr = strtok_r (path, "/", &remainder)))
 	{
-		strlcpy(af_path, ".", PATH_MAX_LEN); // ptr is pointing to nothing
+		strlcpy(af_path, ".", MAX_PATH_LEN); // ptr is pointing to nothing
 		return dir;
 	}
 	while (ptr != NULL && strlen(remainder)!= 0)
@@ -381,9 +440,9 @@ struct dir * get_dir_and_filename (const char *bf_path, char *af_path)
 
 		ptr = strtok_r(NULL, "/", &remainder);
 	}
-	if (strlen(ptr) == PATH_MAX_LEN + 1)  // Error if the filename is too long
+	if (strlen(ptr) == MAX_PATH_LEN+ 1)  // Error if the filename is too long
 		return NULL;
-	strlcpy (af_path, ptr, PATH_MAX_LEN);
+	strlcpy (af_path, ptr, MAX_PATH_LEN);
 	return dir;
 }
 
@@ -391,8 +450,8 @@ struct dir * get_dir_and_filename (const char *bf_path, char *af_path)
 struct dir *parse_sympath (const char *sympath, char *parsed_path)
 {
 	struct dir *dir = NULL;
-	char path[PATH_MAX_LEN + 3];
-	strlcpy(path, sympath, PATH_MAX_LEN + 2);
+	char path[MAX_PATH_LEN+ 3];
+	strlcpy(path, sympath, MAX_PATH_LEN+ 2);
 
 	if (path[0] == '/') dir = dir_open_root();
 	else return NULL;
@@ -411,12 +470,12 @@ struct dir *parse_sympath (const char *sympath, char *parsed_path)
 	dir_close(dir);
 	dir = dir_open(inode);
 
-	strlcpy(parsed_path, next_ptr, PATH_MAX_LEN);
+	strlcpy(parsed_path, next_ptr, MAX_PATH_LEN);
 	return dir;
 }
 
 bool filesys_symlink (const char *target, const char *linkpath) {
-	char name[PATH_MAX_LEN + 1];
+	char name[MAX_PATH_LEN+ 1];
 
 	struct dir *dir = get_dir_and_filename (target, name);
 	ASSERT(dir != NULL);
@@ -432,14 +491,14 @@ bool filesys_symlink (const char *target, const char *linkpath) {
 	}
 	disk_sector_t sector = inode_get_inumber(temp_inode);
 	inode_close(temp_inode);
-	char symlink[PATH_MAX_LEN + 1];
-	strlcpy(symlink, linkpath, PATH_MAX_LEN+1);
+	char symlink[MAX_PATH_LEN+ 1];
+	strlcpy(symlink, linkpath, MAX_PATH_LEN+1);
 
-	char parsed_path[PATH_MAX_LEN + 1];
+	char parsed_path[MAX_PATH_LEN+ 1];
 	struct dir *sym_dir = parse_sympath(linkpath, parsed_path);
 	if (sym_dir == NULL) 
 	{
-		strlcpy(parsed_path, linkpath, PATH_MAX_LEN + 1);
+		strlcpy(parsed_path, linkpath, MAX_PATH_LEN+ 1);
 		sym_dir = dir;
 	}
 	else 
