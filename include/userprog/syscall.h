@@ -1,6 +1,5 @@
 #ifndef USERPROG_SYSCALL_H
 #define USERPROG_SYSCALL_H
-#define PATH_MAX_LEN 14
 
 #include "lib/user/syscall.h"
 #include "lib/kernel/list.h"

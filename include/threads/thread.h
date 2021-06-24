@@ -132,9 +132,7 @@ struct thread {
 	struct supplemental_page_table spt;
 	struct list mmap_list;
 #endif
-
-	/* RYU */
-	struct dir *working_dir;
+	struct dir *cur_dir;
 
 	/* Our Implementation */
 	struct list sym_list;

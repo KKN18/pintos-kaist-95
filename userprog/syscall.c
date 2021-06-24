@@ -327,8 +327,9 @@ bool chdir (const char *dirname)
    if(dir == NULL)
       return false;
    lock_acquire(&file_access);
-   dir_close (thread_current()->working_dir);
-   thread_current()->working_dir = dir;
+   struct thread *t = thread_current();
+   dir_close (t->cur_dir);
+   t->cur_dir = dir;
    lock_release(&file_access);
    return true;
 }
@@ -416,8 +417,8 @@ int past_symlink (const char* target, const char* linkpath)
    struct thread *t = thread_current();
    struct sym_link *sym = (struct sym_link *)malloc(sizeof(struct sym_link));
    if (linkpath[0] == '/') linkpath = linkpath + 1;
-   strlcpy(sym->linkpath, linkpath, PATH_MAX_LEN + 1);
-   strlcpy(sym->path, target, PATH_MAX_LEN + 1);
+   strlcpy(sym->linkpath, linkpath, MAX_PATH_LEN+ 1);
+   strlcpy(sym->path, target, MAX_PATH_LEN + 1);
    list_push_back(&t->sym_list, &sym->sym_elem);
 
    return 0;
