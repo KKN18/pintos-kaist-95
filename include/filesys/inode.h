@@ -32,4 +32,8 @@ bool inode_is_sym (struct inode *inode);
 void inode_all_remove (void);
 void set_sym_inode (struct inode *inode);
 
+// For Mount
+void set_device_info (struct inode *inode, int device_info);
+bool device_is_allowed (struct inode *inode, int device_info);
+
 #endif /* filesys/inode.h */

@@ -12,8 +12,8 @@
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
-int mount_calls = 0;
-int umount_calls = 0;
+bool mount_occur;
+int chan_dev;
 
 /* Our Implementation */
 #include "filesys/inode.h"
@@ -45,6 +45,9 @@ syscall_init (void) {
 
    /* Our Implementation */
    lock_init(&file_access);
+
+   mount_occur = false;
+   chan_dev = 0;
    /* END */
 
    /* The interrupt service rountine should not serve any interrupts
@@ -323,6 +326,13 @@ void *call_mmap (void *addr, size_t length, int writable, int fd, off_t offset)
 
 bool chdir (const char *dirname) 
 {
+   if (mount_occur)  // Only check when mount is occured
+   {
+      bool allowed = check_dir_with_diskinfo (dirname, chan_dev);
+      if (!allowed)
+         return false;
+   }
+   
    struct dir *dir = get_directory (dirname);
    if(dir == NULL)
       return false;
@@ -414,25 +424,25 @@ See disk/disk.c for the meaning of chan_no and dev_no.
 On success, zero is returned. On error, -1 is returned. */
 int mount (const char *path, int chan_no, int dev_no)
 {
-   mount_calls++;
-   struct disk *d = NULL;
+   if (chan_no < 0 || chan_no > 1)
+      return -1;
+   if (dev_no < 0 || dev_no > 1)
+      return -1;
 
-   bool init = false;
-   init = mount_calls%2 ? true : false;
-   
-   if(init)
+   if (mount_occur == false)
    {
-      d = disk_get(chan_no, dev_no);
-      if(d == NULL)
-         PANIC("Mount disk init failed");
+      struct disk *d = d = disk_get(chan_no, dev_no);
       mount_disk_init(true, d);
    }
 
-   if (!init)
-   {
-      mkdir("/a/b");
-   }
-      
+   // If chan_no is 1 and dev_no is 0, express it as 10
+   chan_dev = chan_no * 10 + dev_no;  
+   struct dir *dir = get_directory(path);
+   if (dir == NULL)
+      return -1;
+   
+   set_device_info(dir_get_inode(dir), chan_dev);
+   mount_occur = true;
    return 0;
 }
 
@@ -441,8 +451,10 @@ On success, zero is returned.
 On error, -1 is returned. */
 int umount (const char *path)
 {
-   umount_calls++;
-   remove("/a/b");
+   struct dir *dir = get_directory(path);
+   if (dir == NULL)
+      return -1;
+   chan_dev = 0;
    return 0;
 }
 

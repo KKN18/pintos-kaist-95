@@ -46,6 +46,7 @@ struct inode {
 	struct inode_disk data;             /* Inode content. */
 	/* Our Implementation */
 	bool is_sym;
+	int device_info;					/* For Mount */
 	struct lock *fat_lock;				/* Lock when accessing FAT */
 };
 
@@ -212,6 +213,8 @@ inode_open (disk_sector_t sector) {
 	inode->sector = sector;
 	inode->open_cnt = 1;
 	inode->deny_write_cnt = 0;
+	// For Mount
+	inode->device_info = 0;
 	inode->removed = false;
 	inode->is_sym = false;
 	page_cache_read (filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
@@ -647,4 +650,22 @@ bool sym_inode_create (disk_sector_t sector, const char *sympath, struct dir *di
 void set_sym_inode (struct inode *inode)
 {
 	inode->is_sym = true;
+}
+
+/* Set inode's device info. 
+   Used in mount implementation. */
+void set_device_info (struct inode *inode, int device_info)
+{
+   inode->device_info = device_info;
+}
+
+/* Returns true if device_info matches or 0. Otherwise, return false.
+   Used in mount implementation. */
+bool device_is_allowed (struct inode *inode, int device_info)
+{
+   if (inode->device_info == 0)
+      return true;
+   else if (inode->device_info == device_info)
+      return true;
+   return false;
 }

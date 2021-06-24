@@ -259,6 +259,7 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1]) {
 	return false;	// No entries in used
 }
 
+/* Returns true if directory is empty. Otherwise, return false. */
 bool
 dir_is_empty (struct dir *dir)
 {
@@ -274,6 +275,7 @@ dir_is_empty (struct dir *dir)
 	return true;
 }
 
+/* Return directory from dir_name */
 struct dir *get_directory(const char *dirname)
 {
 	char buffer[MAX_PATH_LEN + 1];
@@ -288,9 +290,63 @@ struct dir *get_directory(const char *dirname)
 	return dir;
 }
 
+/* Return directory from inode. Used in symlink implementation */
 struct dir *get_dir_from_sym (struct inode *sym_inode)
 {
 	struct inode *inode = sector_inode_open (inode_get_inumber(sym_inode));
 	struct dir *dir = dir_open(inode);
 	return dir;
+}
+
+/* Return true if disk_info matches path. Otherwise, return false.
+   Used in mount implementation. */
+bool check_dir_with_diskinfo (const char *bf_path, int disk_info)
+{
+   if (bf_path == NULL || strlen(bf_path) == 0)
+      return true;
+
+   struct dir *dir;
+   struct thread *t = thread_current();
+
+   if (bf_path[0] == '/')
+      dir = dir_open_root();
+   else if (t->cur_dir == NULL)
+      dir = dir_open_root();
+   else
+      dir = dir_reopen(t->cur_dir);
+
+   // To handle such long filename, initially use more buffer than MAX_PATH_LEN
+   // We will return error if the path is fully copied later
+   char path[MAX_PATH_LEN+ 3];   
+   strlcpy (path, bf_path, MAX_PATH_LEN+ 2);
+
+   if (!inode_is_dir (dir_get_inode (dir)))  // To prevent error cases such as dir-rm-cwd
+      return true;
+
+   char *ptr;
+   char *remainder;
+   if (!(ptr = strtok_r (path, "/", &remainder)))
+   {
+      return true;
+   }
+   while (ptr != NULL && strlen(remainder)!= 0)
+   {
+      struct inode *inode = NULL;
+      if (!valid_path (dir, ptr, &inode)) // check whether the inode is in dir and it is directory
+      {
+         dir_close(dir);
+         return true;
+      }
+      if (inode == NULL)
+         return true;
+      if (!device_is_allowed(inode, disk_info))
+         return false;
+      dir_close(dir);
+      dir = dir_open(inode);
+
+      ptr = strtok_r(NULL, "/", &remainder);
+   }
+   if (strlen(ptr) == MAX_PATH_LEN+ 1)  // Error if the filename is too long
+      return true;
+   return true;
 }

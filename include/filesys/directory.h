@@ -27,8 +27,14 @@ bool dir_add (struct dir *, const char *name, disk_sector_t, bool is_dir);
 bool dir_remove (struct dir *, const char *name);
 bool dir_readdir (struct dir *, char name[NAME_MAX + 1]);
 
-bool
-dir_is_empty (struct dir *dir);
+/* Our Implementation */
+bool dir_is_empty (struct dir *dir);
 struct dir *get_directory (const char *dirname);
+
+// For Symlink
 struct dir *get_dir_from_sym (struct inode *sym_inode);
+
+// For Mount
+bool check_dir_with_diskinfo (const char *bf_path, int disk_info);
+
 #endif /* filesys/directory.h */
