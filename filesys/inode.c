@@ -1,4 +1,3 @@
-#include "filesys/inode.h"
 #include <list.h>
 #include <debug.h>
 #include <round.h>
@@ -10,6 +9,7 @@
 #include "filesys/fat.h"
 #include "filesys/directory.h"
 #include "filesys/page_cache.h"
+#include "filesys/inode.h"
 
 #define LOG 0
 /* END */
@@ -89,11 +89,6 @@ byte_to_sector (const struct inode *inode, off_t pos) {
 	lock_release(&inode->fat_lock);
 
 	return cluster_to_sector(temp);
-	/* Original Code */
-	// if (pos < inode->data.length)
-	// 	return inode->data.start + pos / DISK_SECTOR_SIZE;
-	// else
-	// 	return -1;
 }
 
 /* List of open inodes, so that opening a single inode twice
@@ -138,19 +133,7 @@ inode_create (disk_sector_t sector, off_t length, bool is_dir) {
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
 		disk_inode->is_dir = is_dir;
-		/*
-		if (free_map_allocate (sectors, &disk_inode->start)) {
-			page_cache_write (filesys_disk, sector, disk_inode);
-			if (sectors > 0) {
-				static char zeros[DISK_SECTOR_SIZE];
-				size_t i;
-
-				for (i = 0; i < sectors; i++)
-					page_cache_write (filesys_disk, disk_inode->start + i, zeros);
-			}
-			success = true;
-		}
-		*/
+		
 		static char zeros[DISK_SECTOR_SIZE];
 		disk_sector_t start;
 		disk_sector_t temp;
@@ -255,32 +238,6 @@ inode_get_inumber (const struct inode *inode) {
 	return inode->sector;
 }
 
-// void
-// inode_all_write_to_disk (const struct inode *inode) {
-//    if(LOG)
-//    {
-//       printf("inode_all_write_to_disk\n");
-//    }
-
-//    ASSERT (inode != NULL);
-//    lock_acquire(&inode->fat_lock);
-
-//    disk_sector_t start = inode->data.start;
-//    cluster_t temp = (cluster_t) start;
-
-//    while(temp != EOChain)
-//    {
-//       //printf("temp = %d\n", temp);
-// 	  page_cache_write(filesys_disk, fat_to_data_cluster(temp), )
-//       temp = fat_get(temp);
-//       //page_cache_write() on cluster_to_sector(temp);
-//    }
-//    // printf("read sector_idx %d\n", temp);
-//    lock_release(&inode->fat_lock);
-
-//    return;
-// }
-
 /* Closes INODE and writes it to disk.
  * If this was the last reference to INODE, frees its memory.
  * If INODE was also a removed inode, frees its blocks. */
@@ -308,9 +265,7 @@ inode_close (struct inode *inode) {
 			fat_remove_chain(inode->data.start, 0);
 		}
 		free (inode);
-		// printf("free inode\n");
 	}
-	// printf("finish inode close\n");
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who
@@ -386,6 +341,8 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 	return bytes_read;
 }
 
+/* Open inode for correspoding sector number 
+   Used in symlink implementation. */
 struct inode *
 sector_inode_open (disk_sector_t sector) {
 	if(LOG)
@@ -421,6 +378,7 @@ sector_inode_open (disk_sector_t sector) {
 	return inode;
 }
 
+/* Uodate inode. Used in symlink implementation. */
 void inode_update (struct inode *sym_inode)
 {
 	ASSERT(sym_inode -> is_sym == true);
@@ -438,8 +396,7 @@ void inode_update (struct inode *sym_inode)
 		}
 	}
 	
-	
-	// printf("af update length %d\n", inode->data.length);
+	return;
 }
 
 /* Writes SIZE bytes from BUFFER into INODE, starting at OFFSET.
@@ -563,8 +520,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 
 /* Disables writes to INODE.
    May be called at most once per inode opener. */
-	void
-inode_deny_write (struct inode *inode)
+void inode_deny_write (struct inode *inode)
 {
 	if(LOG)
 	{
@@ -598,7 +554,8 @@ inode_length (const struct inode *inode) {
 	return inode->data.length;
 }
 
-
+/* Returns true if this indoe is directory. 
+   Otherwise, return false. */
 bool
 inode_is_dir (const struct inode *inode)
 {
@@ -614,12 +571,15 @@ inode_is_dir (const struct inode *inode)
 	return inode->data.is_dir;
 }
 
+/* Returns inode's removed status. */
 bool
 inode_is_removed (struct inode *inode)
 {
    return inode->removed;
 }
 
+/* Returns inode_disk for corresponding sector number. 
+   Used in symlink implementation */
 struct inode_disk *data_open (disk_sector_t sector)
 {
 	struct inode_disk *inode_disk = malloc(sizeof (struct inode_disk ));
@@ -630,52 +590,31 @@ struct inode_disk *data_open (disk_sector_t sector)
 	return inode_disk;
 } 
 
-/* Called in filesys_done */
+/* Called in filesys_done.
+   Close all inodes when exit. */
 void
 inode_all_remove (void)
 {
 	struct list_elem *p;
-	// ASSERT(open_inodes != NULL);
-	// printf("Open inodes : %d\n", list_size(&open_inodes));
 	for(p = list_begin(&open_inodes); p!=list_end(&open_inodes);) 
 	{
 		struct inode *inode = list_entry(p, struct inode, elem);
 		p=list_next(p);
 		inode_close(inode);
-		// list_remove(&inode->elem);
-		// free_fat_release (inode->sector, 1);
-		// page_cache_write(filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
-		// fat_remove_chain(inode->data.start, 0);
-		// free(inode);
 	}
-	// printf("After remove Open inodes : %d\n", list_size(&open_inodes));
-
-	// struct inode *inode = malloc(sizeof (struct inode));
-	// inode->sector = 229;
-	// inode->open_cnt = 1;
-	// inode->deny_write_cnt = 0;
-	// inode->removed = false;
-	// inode->is_sym = false;
-	// lock_init(&inode->fat_lock);
-	// page_cache_read(filesys_disk, fat_to_data_cluster(inode->sector), &inode->data);
-	// struct inode *temp_inode;
-	// printf("Okay\n");
-	// if (dir_lookup(dir_open(inode), "file", &temp_inode))
-	// {
-	// 	printf("Found file\n");
-	// }
-	// else printf("No file\n");
-
 	return;
 }
 
+/* Returns inode's is_sym status. 
+   Used in symlink implementation. */
 bool inode_is_sym (struct inode *inode)
 {
 	return inode->is_sym;
 }
 
 
-
+/* Create node for symlink. 
+   Used in symlink implementation. */
 bool sym_inode_create (disk_sector_t sector, const char *sympath, struct dir *dir)
 {
 	struct inode_disk *data = data_open(sector);
@@ -703,6 +642,8 @@ bool sym_inode_create (disk_sector_t sector, const char *sympath, struct dir *di
 	return true;
 }
 
+/* Set inode's is_sym status to true. 
+   Used in symlink implementation. */
 void set_sym_inode (struct inode *inode)
 {
 	inode->is_sym = true;
