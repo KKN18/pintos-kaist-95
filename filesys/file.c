@@ -54,9 +54,8 @@ file_close (struct file *file) {
 	}
 }
 
-/* Returns the inode encapsulated by FILE. */
 struct inode *
-file_get_inode (struct file *file) {
+get_inode_from_file (struct file *file) {
 	return file->inode;
 }
 

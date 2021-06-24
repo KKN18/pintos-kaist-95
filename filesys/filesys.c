@@ -68,7 +68,7 @@ filesys_done (void) {
 #ifdef EFILESYS
 	inode_all_remove();
 	fat_close ();
-	page_cache_close();
+	page_cache_destroy();
 #else
 	free_map_close ();
 #endif

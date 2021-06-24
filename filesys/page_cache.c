@@ -6,7 +6,7 @@
 
 static bool page_cache_readahead (struct page *page, void *kva);
 static void page_cache_writeback (struct page_cache_entry *entry);
-static void page_cache_destroy (struct page *page);
+// static void page_cache_destroy (struct page *page);
 
 /* DO NOT MODIFY this struct */
 static const struct page_operations page_cache_op = {
@@ -30,12 +30,10 @@ page_cache_init (void) {
 
 	lock_init(&page_cache_lock);
 	clock_ptr = 0;
-
 	for(int i = 0; i < PAGE_CACHE_SIZE; i++)
 	{
-		cache[i].loaded = false;
+		page_cache[i].loaded = false;
 	}
-	
 	return;
 }
 
@@ -52,10 +50,6 @@ static bool
 page_cache_readahead (struct page *page, void *kva) {
 }
 
-/* Destory the page_cache. */
-static void
-page_cache_destroy (struct page *page) {
-}
 
 /* Worker thread for page cache */
 static void
@@ -63,71 +57,33 @@ page_cache_kworkerd (void *aux) {
 }
 
 static void set_entry 
-(struct page_cache_entry *entry, bool loaded, 
+(struct page_cache_entry *entry, bool loaded, bool flag,
 bool dirty, disk_sector_t sec_no)
 {
 	entry->loaded = loaded;
+	entry->flag = flag;
 	entry->dirty = dirty;
 	entry->sec_no = sec_no;
 	return;
 }
 
-static void
-page_cache_writeback (struct page_cache_entry *entry)
-{
-	if(LOG)
-	{
-		printf("pagecache writeback\n");
-	}
-
-	if(entry->loaded == false)
-		return;
-
-	if (entry->dirty) {
-		disk_write (filesys_disk, entry->sec_no, entry->buffer);
-	}
-
-	entry->dirty = false;
-
-	return;
-}
-
-void
-page_cache_close (void)
-{
-	if(LOG)
-	{
-		printf("pagecache close\n");
-	}
-
-	lock_acquire (&page_cache_lock);
-
-	for (int i = 0; i < PAGE_CACHE_SIZE; i++)
-	{
-		page_cache_writeback(&(cache[i]));
-	}
-
-	lock_release (&page_cache_lock);
-	return;
-}
-
 static struct page_cache_entry *
-page_cache_lookup (disk_sector_t sec_no)
+page_cache_lookup (disk_sector_t sec_no) // find page cache entry with certain sec_no
 {
 	if(LOG)
 	{
-		printf("pagecache init\n");
+		printf("pagecache lookup\n");
 	}
 
 	for (int i = 0; i < PAGE_CACHE_SIZE; i++)
 	{
-		if (cache[i].loaded == false) 
+		if (page_cache[i].loaded == false) 	// No entry
 			continue;
-		if (cache[i].sec_no == sec_no) {
-			return &(cache[i]);
+		if (page_cache[i].sec_no == sec_no) { // We found it!
+			return &(page_cache[i]);
 		}
 	}
-	return NULL; // cache miss
+	return NULL; // No such entry in cache
 }
 
 static struct page_cache_entry *
@@ -135,8 +91,8 @@ page_cache_get_empty_entry (void) {
 	
 	for (int i = 0; i < PAGE_CACHE_SIZE; i++)
 	{
-		if (cache[i].loaded == false) 
-			return &(cache[i]);
+		if (page_cache[i].loaded == false) // Empty entry, return its pointer
+			return &(page_cache[i]);
 	}
 
 	return NULL;
@@ -152,14 +108,11 @@ page_cache_evict (void)
 
 	struct page_cache_entry *victim;
 
-	if((victim = page_cache_get_empty_entry()) != NULL)
-		return victim;
-
 	// Approximate LRU
 	for(int i = 0; ; i++)
 	{
-		if(cache[clock_ptr].flag)
-			cache[clock_ptr].flag = false;
+		if(page_cache[clock_ptr].flag)
+			page_cache[clock_ptr].flag = false;
 		else
 			break;
 
@@ -171,7 +124,7 @@ page_cache_evict (void)
 			PANIC("Eviction may have caused infinite loop");
 	}
 
-	victim = &cache[clock_ptr];
+	victim = &page_cache[clock_ptr];
 	if (victim->dirty) {
 		page_cache_writeback (victim);
 	}
@@ -189,37 +142,88 @@ void page_cache_read (struct disk *d, disk_sector_t sec_no, const void *buffer)
 
 	lock_acquire (&page_cache_lock);
 
-	struct page_cache_entry *victim = page_cache_lookup (sec_no);
-	if (victim == NULL) {
-		victim = page_cache_evict ();
-		set_entry(victim, true, sec_no, false);
-		disk_read (d, sec_no, victim->buffer);
+	struct page_cache_entry *target;
+	if ((target = page_cache_lookup (sec_no)))	// If the block is already in page cache, just copy the cache to the buffer
+	{
+		target->flag = true;
+		memcpy (buffer, target->buffer, DISK_SECTOR_SIZE);
+	} 
+	else if ((target = page_cache_get_empty_entry()) != NULL) // If not, first read block to page cache and copy it to the buffer
+	{
+		set_entry(target, true, true, false, sec_no);
+		disk_read (d, sec_no, target->buffer);
+		memcpy (buffer, target->buffer, DISK_SECTOR_SIZE);
 	}
-
-	victim->flag = true;
-	memcpy (buffer, victim->buffer, DISK_SECTOR_SIZE);
-
+	else // If page cache is full, evict victim and read block to its cache
+	{
+		struct page_cache_entry *victim = page_cache_evict ();
+		set_entry(victim, true, true, false, sec_no);
+		disk_read (d, sec_no, victim->buffer);
+		memcpy (buffer, victim->buffer, DISK_SECTOR_SIZE);
+	}
 	lock_release (&page_cache_lock);
 	return;
 }
+
 
 void page_cache_write (struct disk *d, disk_sector_t sec_no, const void *buffer)
 {
 	lock_acquire (&page_cache_lock);
-
-	struct page_cache_entry *victim = page_cache_lookup (sec_no);
-	if (victim == NULL) {
-		victim = page_cache_evict ();
-		set_entry(victim, true, false, sec_no);
-		disk_read (d, sec_no, victim->buffer);
+	struct page_cache_entry *target;
+	if ((target = page_cache_lookup(sec_no)))	// If the block is already in the cache, just copy buffer to the cache
+	{
+		target->flag = true;
+		target->dirty = true;
+		memcpy (target->buffer, buffer, DISK_SECTOR_SIZE);
+	} 
+	else if ((target = page_cache_get_empty_entry()) != NULL)	// If not, find empty cache and write buffer to it
+	{
+		set_entry(target, true, true, true, sec_no);	
+		memcpy (target->buffer, buffer, DISK_SECTOR_SIZE);
 	}
-
-	victim->flag = true;
-	victim->dirty = true;
-	memcpy (victim->buffer, buffer, DISK_SECTOR_SIZE);
-
+	else	// If the cache is full, evict victim and write buffer to its cache
+	{
+		struct page_cache_entry *victim = page_cache_evict();
+		set_entry(victim, true, true, true, sec_no);	
+		memcpy (victim->buffer, buffer, DISK_SECTOR_SIZE);
+	}
 	lock_release (&page_cache_lock);
 	return;
 }
 
+void
+page_cache_destroy (void)
+{
+	if(LOG)
+	{
+		printf("pagecache destroy\n");
+	}
+
+	lock_acquire (&page_cache_lock);
+	for (int i = 0; i < PAGE_CACHE_SIZE; i++)	// Write all caches to disk and destroy page cache
+	{
+		page_cache_writeback(&(page_cache[i]));
+	}
+	lock_release (&page_cache_lock);
+	return;
+}
+
+
+static void
+page_cache_writeback (struct page_cache_entry *entry)	// Write cache contents back to disk
+{
+	if(LOG)
+	{
+		printf("pagecache writeback\n");
+	}
+
+	if(entry->loaded == false)	// No entry to write back to disk then just return
+		return;
+
+	if (entry->dirty) {	// If not dirty, don't need to write back to disk because contents are not changed
+		disk_write (filesys_disk, entry->sec_no, entry->buffer);
+	}
+	entry->dirty = false;
+	return;
+}
 /* END */

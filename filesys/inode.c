@@ -606,6 +606,8 @@ inode_is_dir (const struct inode *inode)
 	{
 		printf("inode_is_dir\n");
 	}
+	if (inode == NULL)
+		return false;
 	struct inode_disk inode_disk;
 	if (inode->removed)		// To prevent error such as dir-rm-cwd test case
 		return false;

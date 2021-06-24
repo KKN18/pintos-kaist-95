@@ -177,11 +177,11 @@ int open(const char *file) {
       return -1;
    }
 
-   // Wookayin
-   // directory handling
-   struct inode *inode = file_get_inode(f);
-   if(inode != NULL && inode_is_dir(inode)) {
-      f->dir = dir_open( inode_reopen(inode) );
+   struct inode *inode = get_inode_from_file(f);
+   if(inode_is_dir(inode)) {
+      // Save directory pointer at file structure when open directory
+      // It will be used later such as readdir
+      f->dir = dir_open(inode_reopen(inode));
    }
 
    int fd = allocate_fd(f);
@@ -341,63 +341,48 @@ bool mkdir (const char *dir)
 bool readdir (int fd, char *name) 
 {
    lock_acquire(&file_access);
-   
    struct file *f = search_file (fd);
-
    if (f == NULL)
    {
       lock_release(&file_access);
       exit (-1);
    }
-
    if (f->dir == NULL)
    {
       lock_release(&file_access);
       return false;
    }
-
-   bool result = dir_readdir (f->dir, name);
-   
+   bool ret = dir_readdir (f->dir, name);
    lock_release(&file_access);
-   
-   return result;
+   return ret;
 }
 
 
 bool isdir (int fd) 
 {
    lock_acquire(&file_access);
-   
    struct file *f = search_file(fd);
-
    if(f == NULL)
    {
       lock_release(&file_access);
       exit(-1);
    }
-
-   bool result = inode_is_dir(file_get_inode(f));
-
+   bool ret = inode_is_dir(get_inode_from_file(f));
    lock_release(&file_access);
-   
-   return result;
+   return ret;
 }
 
 int inumber (int fd)
 {
    lock_acquire(&file_access);
-
    struct file *f = search_file (fd);
-  
    if(f == NULL)
    {
       lock_release(&file_access);
       exit(-1);
    }
-
    lock_release(&file_access);
-   
-   return inode_get_inumber(file_get_inode(f));
+   return inode_get_inumber(get_inode_from_file(f));
 }
 
 int symlink (const char *target, const char *linkpath)
