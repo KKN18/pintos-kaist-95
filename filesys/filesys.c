@@ -18,6 +18,7 @@
 struct disk *filesys_disk;
 
 static void do_format (void);
+static void mount_do_format (char *path);
 
 bool is_sym_path (char *path);
 /* Initializes the file system module.
@@ -53,6 +54,37 @@ filesys_init (bool format) {
 #endif
 
 	thread_current()->working_dir = dir_open_root();
+}
+
+/* Initializes the file system module.
+ * If FORMAT is true, reformats the file system. */
+void
+mount_disk_init (bool format, char *path) {
+	if(LOG)
+	{
+		printf("filesys_init\n");	
+	}
+
+	// inode_init ();
+
+#ifdef EFILESYS
+	// fat_init ();
+	// page_cache_init();
+	if (format)
+		mount_do_format (path);
+
+	// fat_open ();
+#else
+	/* Original FS */
+	free_map_init ();
+
+	if (format)
+		mount_do_format (path);
+
+	free_map_open ();
+#endif
+
+	// thread_current()->working_dir = dir_open_root();
 }
 
 /* Shuts down the file system module, writing any unwritten data
@@ -265,6 +297,31 @@ do_format (void) {
 
 	dir_close (dir);
 	printf ("done.\n");
+}
+
+/* Formats the file system. */
+static void
+mount_do_format (char *path) {
+	if(LOG)
+	{
+		printf("mount_do_format\n");	
+	}
+		
+	char parsed_path[PATH_MAX_LEN + 1];
+	struct dir *dir = get_dir_and_filename(path, parsed_path);	// Parse name and get file name to parsed_path
+	
+	if (dir == NULL)
+		return false;
+	
+	struct inode *inode;
+
+	printf ("Formatting file system...");
+
+	dir_close (dir);
+
+	printf ("done.\n");
+
+	return;
 }
 
 bool is_sym_path (char *path)

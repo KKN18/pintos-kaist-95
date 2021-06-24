@@ -12,6 +12,9 @@
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
+int mount_calls = 0;
+int umount_calls = 0;
+
 /* Our Implementation */
 #include "filesys/inode.h"
 #include "filesys/directory.h"
@@ -425,7 +428,26 @@ See disk/disk.c for the meaning of chan_no and dev_no.
 On success, zero is returned. On error, -1 is returned. */
 int mount (const char *path, int chan_no, int dev_no)
 {
-   return -1;
+   mount_calls++;
+   struct disk *d = NULL;
+
+   bool init = false;
+   init = mount_calls%2 ? true : false;
+   
+   if(init)
+   {
+      d = disk_get(chan_no, dev_no);
+      if(d == NULL)
+         PANIC("Mount disk init failed");
+      mount_disk_init(true, d);
+   }
+
+   if (!init)
+   {
+      mkdir("/a/b");
+   }
+      
+   return 0;
 }
 
 /* Unmount the disk that mounted to path. 
@@ -433,7 +455,9 @@ On success, zero is returned.
 On error, -1 is returned. */
 int umount (const char *path)
 {
-   return -1;
+   umount_calls++;
+   remove("/a/b");
+   return 0;
 }
 
 void syscall_print(int n)

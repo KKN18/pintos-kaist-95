@@ -21,7 +21,6 @@ bool filesys_create (const char *name, off_t initial_size, bool is_dir);
 struct file *filesys_open (const char *name);
 bool filesys_remove (const char *name);
 /* Our Implementation */
-// RYU
 struct dir *get_dir_and_filename (const char *, char *);
 
 struct sym_link {
@@ -29,5 +28,9 @@ struct sym_link {
     char path[PATH_MAX_LEN];
     struct list_elem sym_elem;
 };
+
 bool filesys_symlink (const char *target, const char *linkpath);
+
+void mount_disk_init (bool format, char *path);
+
 #endif /* filesys/filesys.h */
